@@ -52,7 +52,7 @@ type Options struct {
 	DataDir           string             // DataDir is the directory where DownCache will store its indexes.
 	FrontMatterFormat FrontmatterFormat  // FrontMatterFormat is the format used for frontmatter in markdown files. Default is TOML.
 	Logger            *slog.Logger       // Logger is the logger used by DownCache. Default is a debug logger to stderr.
-	MarkDir           string             // MarkDir is the directory where markdown files are stored.
+	MarkdownDir       string             // MarkdownDir is the directory where markdown files are stored.
 	MarkdownParser    MarkdownParserFunc // MarkdownParser is the function used to parse markdown files. A default parser is used if not provided.
 	Reindex           bool               // Reindex will reindex all markdown files when DownCache is initialized.
 	Taxonomies        map[string]string  // Taxonomies is a map of taxonomy plural names to their singular names.
@@ -60,8 +60,8 @@ type Options struct {
 
 // NewDownCache creates a new DownCache instance with the provided options.
 func NewDownCache(opts Options) (*DownCache, error) {
-	if opts.MarkDir == "" || opts.DataDir == "" {
-		return nil, errors.New("MarkDir and DataDir are required")
+	if opts.MarkdownDir == "" || opts.DataDir == "" {
+		return nil, errors.New("MarkdownDir and DataDir are required")
 	}
 
 	if opts.MarkdownParser == nil {
@@ -84,7 +84,7 @@ func NewDownCache(opts Options) (*DownCache, error) {
 
 	dg := &DownCache{
 		authors:           opts.Authors,
-		markDir:           opts.MarkDir,
+		markDir:           opts.MarkdownDir,
 		dataDir:           opts.DataDir,
 		frontmatterFormat: opts.FrontMatterFormat,
 		mdParser:          opts.MarkdownParser,
@@ -263,7 +263,7 @@ func (dg *DownCache) clearIndexes() error {
 	return nil
 }
 
-// Reindex re-indexes all markdown files in the MarkDir directory.
+// Reindex re-indexes all markdown files in the MarkdownDir directory.
 func (dg *DownCache) Reindex() (map[string]int, error) {
 	indexCounts := make(map[string]int)
 
@@ -366,7 +366,7 @@ func (dg *DownCache) DeIndexPost(pathID string) error {
 	return nil
 }
 
-// IndexPost indexes a post in the bolt and bleve indexes.
+// IndexPost indexes an individual post in the bolt and bleve indexes.
 func (dg *DownCache) IndexPost(doc *Post) error {
 	dg.mu.Lock()
 	defer dg.mu.Unlock()

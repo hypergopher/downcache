@@ -34,15 +34,15 @@ type Post struct {
 type PostMeta struct {
 	Authors    []string            `yaml:"authors,omitempty" toml:"authors,omitempty"`
 	Featured   bool                `yaml:"featured,omitempty" toml:"featured,omitempty"`
-	Photo      string              `yaml:"photo,omitempty" toml:"photo,omitempty"`
-	Updated    time.Time           `yaml:"updated,omitempty" toml:"updated,omitempty"`
 	Name       string              `yaml:"name,omitempty" toml:"name,omitempty"`
+	Photo      string              `yaml:"photo,omitempty" toml:"photo,omitempty"`
 	Properties map[string]any      `yaml:"properties,omitempty" toml:"properties,omitempty"`
 	Published  time.Time           `yaml:"published,omitempty" toml:"published,omitempty"`
 	Status     string              `yaml:"status,omitempty" toml:"status,omitempty"`
 	Subtitle   string              `yaml:"subtitle,omitempty" toml:"subtitle,omitempty"`
 	Summary    string              `yaml:"summary,omitempty" toml:"summary,omitempty"`
 	Taxonomies map[string][]string `yaml:"taxonomies,omitempty" toml:"taxonomies,omitempty"`
+	Updated    time.Time           `yaml:"updated,omitempty" toml:"updated,omitempty"`
 	Visibility string              `yaml:"visibility,omitempty" toml:"visibility,omitempty"`
 }
 

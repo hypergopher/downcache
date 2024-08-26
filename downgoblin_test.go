@@ -80,8 +80,8 @@ func createDownCache(t *testing.T, markPath, dataPath string) *downcache.DownCac
 	t.Helper()
 
 	dg, err := downcache.NewDownCache(downcache.Options{
-		MarkDir: markPath,
-		DataDir: dataPath,
+		MarkdownDir: markPath,
+		DataDir:     dataPath,
 		Authors: map[string]downcache.Author{
 			"author1": {
 				Name:      "Author 1",

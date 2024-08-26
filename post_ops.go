@@ -11,28 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func (dg *DownCache) validatePost(postType, path, content string, meta *PostMeta) error {
-	if !dg.postTypes.IsValidTypeKey(string(postType)) {
-		return ErrInvalidPostType
-	}
-
-	if !IsValidPostPath(path) {
-		return ErrInvalidPostSlug
-	}
-
-	if strings.TrimSpace(content) == "" {
-		return ErrMissingPostContent
-	}
-
-	if meta != nil {
-		if err := meta.Validate(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // CreatePost creates a new post on the filesystem and indexes it. If the post already exists, an error will be returned.
 func (dg *DownCache) CreatePost(postType, path, content string, meta *PostMeta) (string, error) {
 	if err := dg.validatePost(postType, path, content, meta); err != nil {
@@ -78,6 +56,28 @@ func (dg *DownCache) DeletePost(postType, path string) error {
 
 	if err := dg.DeIndexPost(PageID(postType, path)); err != nil {
 		return fmt.Errorf("post was deleted but failed to deindex: %w", err)
+	}
+
+	return nil
+}
+
+func (dg *DownCache) validatePost(postType, path, content string, meta *PostMeta) error {
+	if !dg.postTypes.IsValidTypeKey(string(postType)) {
+		return ErrInvalidPostType
+	}
+
+	if !IsValidPostPath(path) {
+		return ErrInvalidPostSlug
+	}
+
+	if strings.TrimSpace(content) == "" {
+		return ErrMissingPostContent
+	}
+
+	if meta != nil {
+		if err := meta.Validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -72,31 +72,4 @@ func DefaultPostTypes() PostTypesMap {
 			DirPattern: "bookmarks/",
 		},
 	}
-	//return []PostType{
-	//	{
-	//		TypeKey:    PostTypeKeyArticle,
-	//		DirPattern: "articles/",
-	//		FrontmatterCheck: func(fm map[string]any) bool {
-	//			_, hasDate := fm["date"]
-	//			return hasDate
-	//		},
-	//	},
-	//	{
-	//		TypeKey:    PostTypeKeyPage,
-	//		DirPattern: "pages/",
-	//		FrontmatterCheck: func(fm map[string]any) bool {
-	//			return true // All posts in the pages directory are considered pages
-	//		},
-	//	},
-	//}
 }
-
-//// TypeRuleFromPath returns the appropriate PostType for the given file path. If no rule matches, an empty PostType is returned.
-//func TypeRuleFromPath(filePath string, postTypes []PostType) PostType {
-//	for _, rule := range postTypes {
-//		if strings.HasPrefix(filePath, rule.DirPattern) {
-//			return rule
-//		}
-//	}
-//	return PostType{}
-//}
