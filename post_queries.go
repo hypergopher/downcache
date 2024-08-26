@@ -98,7 +98,7 @@ func (dg *DownCache) GetPosts(filter FilterOptions) (Paginator, error) {
 		options...,
 	)
 
-	request := dg.searchRequest(postsQuery, filter.PageNum, filter.PageSize, extraFields...)
+	request := dg.searchRequest(postsQuery, filter.PageNum, filter.PageSize, filter.SortBy, extraFields...)
 	result, docs, err := dg.postsFromSearchRequest(request, checkField, checkValue)
 	if err != nil {
 		return Paginator{}, fmt.Errorf("error searching for posts: %w", err)
@@ -127,14 +127,20 @@ func (dg *DownCache) postsFromSearchRequest(request *bleve.SearchRequest, checkF
 	return result, docs, nil
 }
 
-func (dg *DownCache) searchRequest(query query.Query, pageNum, pageSize int, fields ...string) *bleve.SearchRequest {
+func (dg *DownCache) searchRequest(query query.Query, pageNum, pageSize int, sortBy []string, fields ...string) *bleve.SearchRequest {
 	offset := (pageNum - 1) * pageSize
 	request := bleve.NewSearchRequestOptions(query, pageSize, offset, true)
-	request.SortBy([]string{
-		"-featured",
-		"-published",
-		"name",
-	})
+
+	if len(sortBy) > 0 {
+		request.SortBy(sortBy)
+	} else {
+		request.SortBy([]string{
+			"-featured",
+			"-published",
+			"name",
+		})
+	}
+
 	requestFields := []string{
 		"slug",
 		"name",

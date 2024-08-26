@@ -29,6 +29,7 @@ func TestDownCache_GetPosts(t *testing.T) {
 		name          string
 		filter        downcache.FilterOptions
 		expectedCount int
+		expectedNames []string
 	}{
 		{
 			name: "Get all published articles",
@@ -95,6 +96,20 @@ func TestDownCache_GetPosts(t *testing.T) {
 			},
 			expectedCount: 2,
 		},
+		{
+			name: "Sort by name, then by published date",
+			filter: downcache.FilterOptions{
+				FilterPostType: downcache.PostTypeKeyArticle,
+				SortBy:         []string{"name", "published"},
+			},
+			expectedCount: 4,
+			expectedNames: []string{
+				"Dated Article",
+				"Nested FOOBAR Article",
+				"Published Article",
+				"Published TOML Article",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -103,6 +118,12 @@ func TestDownCache_GetPosts(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedCount, paginator.TotalPosts)
+
+			if len(tc.expectedNames) > 0 {
+				for i, post := range paginator.AllPosts {
+					assert.Equal(t, tc.expectedNames[i], post.Name)
+				}
+			}
 		})
 	}
 }

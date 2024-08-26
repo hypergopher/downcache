@@ -16,6 +16,7 @@ func (ft FilterType) String() string {
 type FilterOptions struct {
 	PageNum            int         // The page number to retrieve
 	PageSize           int         // The number of items per page
+	SortBy             []string    // The frontmatter fields to sort by. Default is ["-featured", "-published", "name]
 	FilterType         FilterType  // The type of filter to apply (author, article, taxonomy)
 	FilterKey          string      // The key to filter by (e.g. "categories", "tags"). Only used for taxonomy filters currently.
 	FilterTerm         string      // The term to filter by (e.g. "cat3", "tag3", "author1"). Used with FilterTypeAuthor and FilterTypeTaxonomy.
