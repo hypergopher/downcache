@@ -118,11 +118,11 @@ func assertEqualDocuments(t *testing.T, expected, actual *downcache.Post) {
 	assert.Equal(t, expected.Slug, actual.Slug)
 	assert.Equal(t, expected.Content, actual.Content)
 	assert.Equal(t, expected.Status, actual.Status)
-	assert.Equal(t, expected.Featured, actual.Featured)
+	assert.Equal(t, expected.Pinned, actual.Pinned)
 	assert.Equal(t, expected.Photo, actual.Photo)
 	assert.Equal(t, expected.Taxonomies, actual.Taxonomies)
 	assert.Equal(t, expected.Properties, actual.Properties)
-	assert.Equal(t, expected.Authors, actual.Authors)
+	assert.Equal(t, expected.Author, actual.Author)
 	assert.WithinDuration(t, expected.Published, actual.Published, time.Hour*24)
 }
 
@@ -222,9 +222,9 @@ func TestDownCache_GetDocument(t *testing.T) {
 				Status:            "published",
 				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
 				PostType:          "article",
-				Featured:          true,
+				Pinned:            true,
 				Photo:             "/images/featured.jpg",
-				Authors:           []string{"author1"},
+				Author:            []string{"author1"},
 				Taxonomies: map[string][]string{
 					"tags":       {"tag1", "tag2", "tag3"},
 					"categories": {"cat1", "cat2", "cat3"},
@@ -248,9 +248,9 @@ func TestDownCache_GetDocument(t *testing.T) {
 				Status:            "published",
 				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
 				PostType:          "article",
-				Featured:          true,
+				Pinned:            true,
 				Photo:             "/images/featured.jpg",
-				Authors:           []string{"author1"},
+				Author:            []string{"author1"},
 				Taxonomies: map[string][]string{
 					"tags":       {"tag1", "tag2"},
 					"categories": {"cat1", "cat2"},
@@ -274,7 +274,7 @@ func TestDownCache_GetDocument(t *testing.T) {
 				Status:            "published",
 				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
 				PostType:          "article",
-				Featured:          true,
+				Pinned:            true,
 				Photo:             "/images/featured.jpg",
 				Taxonomies: map[string][]string{
 					"tags":       {"tag1", "tag2"},

@@ -43,7 +43,7 @@ func (dg *DownCache) Paginator(docs []*Post, total, currentPage, pageSize int, i
 
 	if includeFeatured {
 		for _, doc := range docs {
-			if doc.Featured {
+			if doc.Pinned {
 				featured = append(featured, doc)
 			} else {
 				nonFeatured = append(nonFeatured, doc)

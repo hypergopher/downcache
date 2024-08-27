@@ -4,7 +4,7 @@ summary = "Nested article summary"
 subtitle = "Nested article subtitle"
 status = "published"
 published = 2024-08-21
-featured = true
+pinned = true
 photo = "/images/featured.jpg"
 
 [taxonomies]

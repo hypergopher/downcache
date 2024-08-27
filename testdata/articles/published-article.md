@@ -15,7 +15,7 @@ taxonomies:
     - tag1
     - tag2
     - tag3
-featured: true
+pinned: true
 photo: /images/featured.jpg
 properties:
   key1: value1

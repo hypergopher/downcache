@@ -54,7 +54,7 @@ func (dg *DownCache) DeletePost(postType, path string) error {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
 
-	if err := dg.DeIndexPost(PageID(postType, path)); err != nil {
+	if err := dg.DeIndexPost(PostID(postType, path)); err != nil {
 		return fmt.Errorf("post was deleted but failed to deindex: %w", err)
 	}
 
@@ -121,13 +121,14 @@ func (dg *DownCache) savePost(postType, path, content string, meta *PostMeta) (s
 	}
 
 	doc := &Post{
+		ID:                PostID(postType, path),
 		Slug:              path,
 		PostType:          postType,
-		Authors:           meta.Authors,
+		Author:            meta.Authors,
 		Content:           content,
 		ETag:              GenerateETag(content),
 		EstimatedReadTime: EstimateReadingTime(content),
-		Featured:          meta.Featured,
+		Pinned:            meta.Pinned,
 		Photo:             meta.Photo,
 		FileTimePath:      path,
 		Updated:           meta.Updated,

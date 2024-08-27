@@ -43,7 +43,7 @@ func DefaultMarkdownParser() MarkdownParserFunc {
 }
 
 // ReadFile reads a markdown file from the filesystem and converts it to a Post.
-func ReadFile(markdownParser MarkdownParserFunc, rootPath, path string, typeRule PostType) (*Post, error) {
+func ReadFile(markdownParser MarkdownParserFunc, rootPath, path string, postType PostType) (*Post, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat file: %w", err)
@@ -64,7 +64,7 @@ func ReadFile(markdownParser MarkdownParserFunc, rootPath, path string, typeRule
 	doc.ETag = GenerateETag(doc.Content)
 	doc.EstimatedReadTime = EstimateReadingTime(doc.Content)
 
-	slugPath := SlugifyPath(rootPath, path, typeRule)
+	slugPath := SlugifyPath(rootPath, path, postType)
 
 	// If the file has a date in the path, and the post doesn't have a published date in the frontmatter,
 	// set the published date to the file's date.
@@ -72,8 +72,9 @@ func ReadFile(markdownParser MarkdownParserFunc, rootPath, path string, typeRule
 		doc.Published = *slugPath.FileTime
 	}
 
+	doc.ID = PostID(postType.TypeKey.String(), slugPath.Slug)
 	doc.Slug = slugPath.Slug
-	doc.PostType = string(typeRule.TypeKey)
+	doc.PostType = string(postType.TypeKey)
 	doc.FileTimePath = slugPath.FileTimePath
 
 	return doc, nil
@@ -142,9 +143,9 @@ func MarkdownToPost(md goldmark.Markdown, content []byte) (*Post, error) {
 	}
 
 	return &Post{
-		Authors:    meta.Authors,
+		Author:     meta.Authors,
 		Content:    html,
-		Featured:   meta.Featured,
+		Pinned:     meta.Pinned,
 		Photo:      meta.Photo,
 		Properties: meta.Properties,
 		Published:  meta.Published,

@@ -15,9 +15,9 @@ type matchOptions struct {
 	value string
 }
 
-// GetPost retrieves a post by its Path ID. If the post does not exist, an error will be returned.
-// The Path ID should be the post's type (e.g. page, post) plus the post's slug, without the file extension.
-// For example, a post with the path "post/my-first-post.md" would have a Path ID of "post/my-first-post".
+// GetPost retrieves a post by its Path PostID. If the post does not exist, an error will be returned.
+// The Path PostID should be the post's type (e.g. page, post) plus the post's slug, without the file extension.
+// For example, a post with the path "post/my-first-post.md" would have a Path PostID of "post/my-first-post".
 func (dg *DownCache) GetPost(pathID string) (*Post, error) {
 	var doc *Post
 	err := dg.boltIndex.View(func(tx *bbolt.Tx) error {

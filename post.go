@@ -9,13 +9,14 @@ import (
 
 // Post represents a Markdown post
 type Post struct {
+	ID                string              `json:"id"`                // ID is the unique identifier for the post
 	Slug              string              `json:"slug"`              // Slug is the URL-friendly version of the name
 	PostType          string              `json:"postType"`          // PostType is the type of post (e.g. post, page)
-	Authors           []string            `json:"authors"`           // Authors is a list of authors
+	Author            string              `json:"author"`            // Author is a list of author
 	Content           string              `json:"content"`           // Content is the HTML content of the post
 	ETag              string              `json:"etag"`              // ETag is the entity tag
 	EstimatedReadTime string              `json:"estimatedReadTime"` // EstimatedReadTime is the estimated reading time
-	Featured          bool                `json:"featured"`          // Featured is true if the post is featured
+	Pinned            bool                `json:"pinned"`            // Pinned is true if the post is pinned
 	Photo             string              `json:"photo"`             // Photo is the URL of the featured image
 	FileTimePath      string              `json:"fileTimePath"`      // FileTimePath is the file time path in the format YYYY-MM-DD for the original file path
 	Updated           time.Time           `json:"updated"`           // Updated is the last modified date
@@ -32,8 +33,8 @@ type Post struct {
 
 // PostMeta represents the frontmatter of a post
 type PostMeta struct {
-	Authors    []string            `yaml:"authors,omitempty" toml:"authors,omitempty"`
-	Featured   bool                `yaml:"featured,omitempty" toml:"featured,omitempty"`
+	Authors    string              `yaml:"author,omitempty" toml:"author,omitempty"`
+	Pinned     bool                `yaml:"pinned,omitempty" toml:"pinned,omitempty"`
 	Name       string              `yaml:"name,omitempty" toml:"name,omitempty"`
 	Photo      string              `yaml:"photo,omitempty" toml:"photo,omitempty"`
 	Properties map[string]any      `yaml:"properties,omitempty" toml:"properties,omitempty"`
@@ -66,20 +67,20 @@ func (dm *PostMeta) Validate() error {
 	return nil
 }
 
-// ID returns the unique identifier for the post
-func (d *Post) ID() string {
-	if d.pageID == "" {
-		d.pageID = PageID(d.PostType, d.Slug)
-	}
-	return d.pageID
-}
+//// PostID returns the unique identifier for the post
+//func (d *Post) PostID() string {
+//	if d.pageID == "" {
+//		d.pageID = PostID(d.PostType, d.Slug)
+//	}
+//	return d.pageID
+//}
 
 func IsValidPostPath(path string) bool {
 	return strings.TrimSpace(path) != ""
 }
 
-// PageID returns the unique identifier for a page of the specified type and slug
-func PageID(postType, slug string) string {
+// PostID returns the unique identifier for a page of the specified type and slug
+func PostID(postType, slug string) string {
 	return fmt.Sprintf("%s/%s", postType, slug)
 }
 
@@ -186,9 +187,9 @@ func (d *Post) HasUpdated() bool {
 	return !d.Updated.IsZero()
 }
 
-// HasAuthors returns true if the post has authors
-func (d *Post) HasAuthors() bool {
-	return len(d.Authors) > 0
+// HasAuthor returns true if the post has author
+func (d *Post) HasAuthor() bool {
+	return len(d.Author) > 0
 }
 
 // HasTaxonomies returns true if the post has taxonomies

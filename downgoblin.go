@@ -378,7 +378,7 @@ func (dg *DownCache) IndexPost(doc *Post) error {
 		}
 	}()
 
-	currentPage, _ := dg.GetPost(doc.ID())
+	currentPage, _ := dg.GetPost(doc.ID)
 
 	err := dg.boltIndex.Update(func(tx *bbolt.Tx) error {
 		if currentPage != nil {
@@ -407,7 +407,7 @@ func (dg *DownCache) IndexPost(doc *Post) error {
 			return fmt.Errorf("failed to serialize post: %w", err)
 		}
 
-		if err := b.Put([]byte(doc.ID()), docBytes); err != nil {
+		if err := b.Put([]byte(doc.ID), docBytes); err != nil {
 			return fmt.Errorf("failed to put post in bucket: %w", err)
 		}
 
@@ -430,7 +430,7 @@ func (dg *DownCache) IndexPost(doc *Post) error {
 	}
 
 	// Index in Bleve
-	if err := dg.bleveIndex.Index(doc.ID(), doc); err != nil {
+	if err := dg.bleveIndex.Index(doc.ID, doc); err != nil {
 		return fmt.Errorf("failed to index post in bleve: %w", err)
 	}
 

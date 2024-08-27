@@ -12,11 +12,11 @@ import (
 type TestPost struct {
 	Slug              *string              `json:"slug"`              // Slug is the URL-friendly version of the name
 	PostType          *string              `json:"postType"`          // PostType is the type of post (e.g. post, page)
-	Authors           *[]string            `json:"authors"`           // Authors is a list of authors
+	Authors           *[]string            `json:"authors"`           // Author is a list of authors
 	Content           *string              `json:"content"`           // Content is the HTML content of the post
 	ETag              *string              `json:"etag"`              // ETag is the entity tag
 	EstimatedReadTime *string              `json:"estimatedReadTime"` // EstimatedReadTime is the estimated reading time
-	Featured          *bool                `json:"featured"`          // Featured is true if the post is featured
+	Featured          *bool                `json:"featured"`          // Pinned is true if the post is featured
 	Photo             *string              `json:"photo"`             // Photo is the URL of the featured image
 	FileTimePath      *string              `json:"fileTimePath"`      // FileTimePath is the file time path in the format YYYY-MM-DD for the original file path
 	Updated           *time.Time           `json:"updated"`           // Updated is the last modified date
@@ -49,7 +49,7 @@ func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *Te
 	}
 
 	if testPost.Authors != nil {
-		copyPost.Authors = *testPost.Authors
+		copyPost.Author = *testPost.Authors
 	}
 
 	if testPost.Content != nil {
@@ -65,7 +65,7 @@ func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *Te
 	}
 
 	if testPost.Featured != nil {
-		copyPost.Featured = *testPost.Featured
+		copyPost.Pinned = *testPost.Featured
 	}
 
 	if testPost.Photo != nil {
@@ -119,7 +119,7 @@ func TestSerializeDeserialize(t *testing.T) {
 	post := &downcache.Post{
 		Slug:     "test",
 		PostType: "blog",
-		Authors:  []string{"author1", "author2"},
+		Author:   []string{"author1", "author2"},
 	}
 	bytes, err := post.Serialize()
 	assert.NoError(t, err)
@@ -179,14 +179,14 @@ func TestPostMethods(t *testing.T) {
 		&downcache.Post{
 			Slug:     "test",
 			PostType: "article",
-			Authors: []string{
+			Author: []string{
 				"author1",
 				"author2",
 			},
 			Content:           "<h1>Test</h1>",
 			ETag:              "",
 			EstimatedReadTime: "< 1 min",
-			Featured:          false,
+			Pinned:            false,
 			Photo:             "/path/to/photo.jpg",
 			FileTimePath:      "",
 			Updated:           updatedTime,
@@ -296,7 +296,7 @@ func TestPostMethods(t *testing.T) {
 			post := mergePost(tc.slug, tc.fileTimePath, baselinePost, tc.post)
 
 			// Test each post method
-			assert.Equal(t, tc.id, post.ID())
+			assert.Equal(t, tc.id, post.ID)
 			assert.Equal(t, tc.slug, post.Slug)
 			assert.Equal(t, tc.slugWithoutTime, post.SlugWithoutDate())
 			assert.Equal(t, tc.slugWithYear, post.SlugWithYear())
@@ -315,14 +315,14 @@ func TestPostMethods(t *testing.T) {
 			assert.Equal(t, tc.hasTaxonomies, post.HasTaxonomies())
 			assert.Equal(t, tc.hasTaxonomy, post.HasTaxonomy("tags"))
 			assert.Equal(t, tc.taxonomy, post.Taxonomy("tags"))
-			assert.Equal(t, tc.hasAuthors, post.HasAuthors())
+			assert.Equal(t, tc.hasAuthors, post.HasAuthor())
 			assert.Equal(t, tc.hasPhoto, post.HasPhoto())
 		})
 	}
 }
 
 func TestPageID(t *testing.T) {
-	assert.Equal(t, "blog/test", downcache.PageID("blog", "test"))
+	assert.Equal(t, "blog/test", downcache.PostID("blog", "test"))
 }
 
 func TestIsValidPostPath(t *testing.T) {

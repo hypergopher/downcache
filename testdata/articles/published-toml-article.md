@@ -4,7 +4,7 @@ summary = "Published article summary"
 subtitle = "Published article subtitle"
 status = "published"
 published = 2024-08-21
-featured = true
+pinned = true
 photo = "/images/featured.jpg"
 authors = ["author1"]
 
