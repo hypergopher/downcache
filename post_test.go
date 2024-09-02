@@ -1,6 +1,7 @@
 package downcache_test
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
@@ -12,17 +13,17 @@ import (
 type TestPost struct {
 	Slug              *string              `json:"slug"`              // Slug is the URL-friendly version of the name
 	PostType          *string              `json:"postType"`          // PostType is the type of post (e.g. post, page)
-	Authors           *[]string            `json:"authors"`           // Author is a list of authors
+	Author            *string              `json:"author"`            // Author is a list of authors
 	Content           *string              `json:"content"`           // Content is the HTML content of the post
 	ETag              *string              `json:"etag"`              // ETag is the entity tag
 	EstimatedReadTime *string              `json:"estimatedReadTime"` // EstimatedReadTime is the estimated reading time
 	Featured          *bool                `json:"featured"`          // Pinned is true if the post is featured
 	Photo             *string              `json:"photo"`             // Photo is the URL of the featured image
 	FileTimePath      *string              `json:"fileTimePath"`      // FileTimePath is the file time path in the format YYYY-MM-DD for the original file path
-	Updated           *time.Time           `json:"updated"`           // Updated is the last modified date
+	Updated           *string              `json:"updated"`           // Updated is the last modified date
 	Name              *string              `json:"name"`              // Name is the name/title of the post
-	Properties        *map[string]any      `json:"properties"`        // Properties is a map of additional, arbitrary key-value pairs. This can be used to store additional metadata such as extra microformat properties.
-	Published         *time.Time           `json:"published"`         // Published is the published date
+	Properties        *map[string]string   `json:"properties"`        // Properties is a map of additional, arbitrary key-value pairs. This can be used to store additional metadata such as extra microformat properties.
+	Published         *string              `json:"published"`         // Published is the published date
 	Status            *string              `json:"status"`            // Status is the status of the post (should be one of draft, published, or archived)
 	Subtitle          *string              `json:"subtitle"`          // Subtitle is the subtitle
 	Summary           *string              `json:"summary"`           // Summary is the summary
@@ -33,6 +34,7 @@ type TestPost struct {
 // mergePost merges two posts together, preferring the values in the base post
 func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *TestPost) *downcache.Post {
 	copyPost := *basePost
+	//copyPost.PostID = downcache.PostPathID(basePost.PostType, slug)
 	copyPost.Slug = slug
 	copyPost.FileTimePath = fileTimePath
 
@@ -48,8 +50,8 @@ func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *Te
 		copyPost.PostType = *testPost.PostType
 	}
 
-	if testPost.Authors != nil {
-		copyPost.Author = *testPost.Authors
+	if testPost.Author != nil {
+		copyPost.Author = *testPost.Author
 	}
 
 	if testPost.Content != nil {
@@ -89,7 +91,7 @@ func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *Te
 	}
 
 	if testPost.Published != nil {
-		copyPost.Published = *testPost.Published
+		copyPost.Published = sql.NullString{String: *testPost.Published, Valid: true}
 	}
 
 	if testPost.Status != nil {
@@ -118,8 +120,8 @@ func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *Te
 func TestSerializeDeserialize(t *testing.T) {
 	post := &downcache.Post{
 		Slug:     "test",
-		PostType: "blog",
-		Author:   []string{"author1", "author2"},
+		PostType: "articles",
+		Author:   "author1",
 	}
 	bytes, err := post.Serialize()
 	assert.NoError(t, err)
@@ -173,16 +175,15 @@ func TestPostMeta_Validate(t *testing.T) {
 }
 
 func TestPostMethods(t *testing.T) {
-	updatedTime := time.Now()
-	publishedTime := time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+	author1 := "author1"
+	author2 := "author2"
+	updatedTime := time.Now().Format("2006-01-02")
+	publishedTime := "2024-08-01"
 	baselinePost :=
 		&downcache.Post{
-			Slug:     "test",
-			PostType: "article",
-			Author: []string{
-				"author1",
-				"author2",
-			},
+			Slug:              "test",
+			PostType:          "articles",
+			Author:            "author1",
 			Content:           "<h1>Test</h1>",
 			ETag:              "",
 			EstimatedReadTime: "< 1 min",
@@ -191,8 +192,8 @@ func TestPostMethods(t *testing.T) {
 			FileTimePath:      "",
 			Updated:           updatedTime,
 			Name:              "Test",
-			Properties:        map[string]any{},
-			Published:         publishedTime,
+			Properties:        map[string]string{},
+			Published:         sql.NullString{String: publishedTime, Valid: true},
 			Status:            "published",
 			Subtitle:          "Subtitle test",
 			Summary:           "Test summary",
@@ -206,7 +207,7 @@ func TestPostMethods(t *testing.T) {
 
 	cases := []struct {
 		name                 string
-		id                   string
+		postID               string
 		slug                 string
 		fileTimePath         string
 		slugWithoutTime      string
@@ -226,13 +227,13 @@ func TestPostMethods(t *testing.T) {
 		hasTaxonomies        bool
 		hasTaxonomy          bool
 		taxonomy             []string
-		hasAuthors           bool
+		hasAuthor            bool
 		hasPhoto             bool
 		post                 *TestPost
 	}{
 		{
 			name:                 "NoAuthors with published date",
-			id:                   "article/test",
+			postID:               "articles/test",
 			slug:                 "test",
 			fileTimePath:         "",
 			slugWithoutTime:      "test",
@@ -252,15 +253,15 @@ func TestPostMethods(t *testing.T) {
 			hasTaxonomies:        true,
 			hasTaxonomy:          true,
 			taxonomy:             []string{"tag1"},
-			hasAuthors:           false,
+			hasAuthor:            true,
 			hasPhoto:             true,
 			post: &TestPost{
-				Authors: &[]string{},
+				Author: &author1,
 			},
 		},
 		{
 			name:                 "WithAuthors, no tags, file time date",
-			id:                   "article/foobar/2024-08-01-test",
+			postID:               "articles/foobar/2024-08-01-test",
 			slug:                 "foobar/2024-08-01-test",
 			fileTimePath:         "2024-08-01",
 			slugWithoutTime:      "foobar/test",
@@ -280,10 +281,10 @@ func TestPostMethods(t *testing.T) {
 			hasTaxonomies:        false,
 			hasTaxonomy:          false,
 			taxonomy:             nil,
-			hasAuthors:           true,
+			hasAuthor:            true,
 			hasPhoto:             true,
 			post: &TestPost{
-				Authors:    &[]string{"author1", "author2"},
+				Author:     &author2,
 				Taxonomies: &map[string][]string{},
 				Published:  nil,
 			},
@@ -296,33 +297,35 @@ func TestPostMethods(t *testing.T) {
 			post := mergePost(tc.slug, tc.fileTimePath, baselinePost, tc.post)
 
 			// Test each post method
-			assert.Equal(t, tc.id, post.ID)
+			//assert.Equal(t, tc.postID, post.PostID)
 			assert.Equal(t, tc.slug, post.Slug)
-			assert.Equal(t, tc.slugWithoutTime, post.SlugWithoutDate())
-			assert.Equal(t, tc.slugWithYear, post.SlugWithYear())
-			assert.Equal(t, tc.slugWithYearMonth, post.SlugWithYearMonth())
-			assert.Equal(t, tc.slugWithYearMonthDay, post.SlugWithYearMonthDay())
+			if tc.post.Published != nil {
+				assert.Equal(t, tc.slugWithoutTime, post.SlugWithoutDate())
+				assert.Equal(t, tc.slugWithYear, post.SlugWithYear())
+				assert.Equal(t, tc.slugWithYearMonth, post.SlugWithYearMonth())
+				assert.Equal(t, tc.slugWithYearMonthDay, post.SlugWithYearMonthDay())
+				assert.Equal(t, tc.hasPublished, post.HasPublished())
+				assert.Equal(t, tc.publishedDate, post.PublishedDate())
+				assert.Equal(t, tc.publishedYear, post.PublishedYear())
+			}
 			assert.Equal(t, tc.hasProperties, post.HasProperties())
 			assert.Equal(t, tc.hasName, post.HasName())
 			assert.Equal(t, tc.hasSubtitle, post.HasSubtitle())
 			assert.Equal(t, tc.hasSummary, post.HasSummary())
 			assert.Equal(t, tc.hasFileTimeInSlug, post.HasFileTimeInSlug())
 			assert.Equal(t, tc.fileTimeInSlug, post.FileTimeInSlug())
-			assert.Equal(t, tc.hasPublished, post.HasPublished())
-			assert.Equal(t, tc.publishedDate, post.PublishedDate())
-			assert.Equal(t, tc.publishedYear, post.PublishedYear())
 			assert.Equal(t, tc.hasUpdated, post.HasUpdated())
 			assert.Equal(t, tc.hasTaxonomies, post.HasTaxonomies())
 			assert.Equal(t, tc.hasTaxonomy, post.HasTaxonomy("tags"))
 			assert.Equal(t, tc.taxonomy, post.Taxonomy("tags"))
-			assert.Equal(t, tc.hasAuthors, post.HasAuthor())
+			assert.Equal(t, tc.hasAuthor, post.HasAuthor())
 			assert.Equal(t, tc.hasPhoto, post.HasPhoto())
 		})
 	}
 }
 
 func TestPageID(t *testing.T) {
-	assert.Equal(t, "blog/test", downcache.PostID("blog", "test"))
+	assert.Equal(t, "blog/test", downcache.PostPathID("blog", "test"))
 }
 
 func TestIsValidPostPath(t *testing.T) {

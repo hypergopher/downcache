@@ -19,8 +19,8 @@ type Paginator struct {
 	Visible          bool // True by default, but can be set to false in the view. E.g. on the home page.
 }
 
-// Paginator returns a Paginator struct with the given parameters.
-func (dg *DownCache) Paginator(docs []*Post, total, currentPage, pageSize int, includeFeatured bool) Paginator {
+// NewPaginator returns a Paginator struct with the given parameters.
+func NewPaginator(docs []*Post, total, currentPage, pageSize int, includeFeatured bool) Paginator {
 	totalPages := (total + pageSize - 1) / pageSize
 	nextPage := currentPage + 1
 	prevPage := currentPage - 1

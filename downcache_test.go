@@ -1,11 +1,9 @@
 package downcache_test
 
 import (
-	"io/fs"
-	"os"
-	"path/filepath"
+	"context"
+	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,306 +11,176 @@ import (
 	"github.com/hypergopher/downcache"
 )
 
-const (
-	testDataDir = "testdata"
-	tempDir     = "downcache_test_temp"
-	markDir     = "markdown"
-	dataDir     = "index"
-)
-
-func setupTestEnvironment(t *testing.T) (string, string) {
-	t.Helper()
-
-	// Create test data directories
-	tempDir, err := os.MkdirTemp("", tempDir)
-	require.NoError(t, err)
-
-	markPath := filepath.Join(tempDir, markDir)
-	dataPath := filepath.Join(tempDir, dataDir)
-
-	require.NoError(t, os.MkdirAll(markPath, 0755))
-	require.NoError(t, os.MkdirAll(dataPath, 0755))
-
-	// Copy testdata files to temp directory
-	require.NoError(t, copyDir(t, testDataDir, markPath))
-
-	return markPath, dataPath
+// InMemoryFileSystem is a simple in-memory implementation of FileSystemManager
+type InMemoryFileSystem struct {
+	files map[string]*downcache.Post
 }
 
-// copyDir copies the contents of a directory to another directory
-func copyDir(t *testing.T, join string, path string) error {
-	t.Helper()
-
-	return filepath.Walk(join, func(src string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(join, src)
-		if err != nil {
-			return err
-		}
-
-		dest := filepath.Join(path, relPath)
-
-		if info.IsDir() {
-			return os.MkdirAll(dest, 0755)
-		}
-
-		data, err := os.ReadFile(src)
-		if err != nil {
-			return err
-		}
-
-		return os.WriteFile(dest, data, 0644)
-	})
-}
-
-func cleanupTestEnvironment(t *testing.T, tempDir ...string) {
-	t.Helper()
-
-	for _, dir := range tempDir {
-		require.NoError(t, os.RemoveAll(dir))
+func NewInMemoryFileSystem() *InMemoryFileSystem {
+	return &InMemoryFileSystem{
+		files: make(map[string]*downcache.Post),
 	}
 }
 
-func createDownCache(t *testing.T, markPath, dataPath string) *downcache.DownCache {
-	t.Helper()
-
-	dg, err := downcache.NewDownCache(downcache.Options{
-		MarkdownDir: markPath,
-		DataDir:     dataPath,
-		Authors: map[string]downcache.Author{
-			"author1": {
-				Name:      "Author 1",
-				AvatarURL: "/images/author1.jpg",
-				Links: []downcache.AuthorLink{
-					{
-						Name: "Mastodon",
-						Icon: "mastodon",
-						URL:  "https://example.social/@author1",
-					},
-				},
-			},
-		},
-		Taxonomies: map[string]string{
-			"tags":       "tag",
-			"categories": "category",
-		},
-		ClearIndexes: true,
-		Reindex:      true,
-		Logger:       nil,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, dg)
-
-	return dg
+func (fs *InMemoryFileSystem) Walk(_ context.Context) (<-chan *downcache.Post, <-chan error) {
+	posts := make(chan *downcache.Post)
+	errs := make(chan error)
+	go func() {
+		defer close(posts)
+		defer close(errs)
+		for _, post := range fs.files {
+			posts <- post
+		}
+	}()
+	return posts, errs
 }
 
-func assertEqualDocuments(t *testing.T, expected, actual *downcache.Post) {
-	t.Helper()
-
-	assert.Equal(t, expected.Name, actual.Name)
-	assert.Equal(t, expected.Subtitle, actual.Subtitle)
-	assert.Equal(t, expected.Summary, actual.Summary)
-	assert.Equal(t, expected.Slug, actual.Slug)
-	assert.Equal(t, expected.Content, actual.Content)
-	assert.Equal(t, expected.Status, actual.Status)
-	assert.Equal(t, expected.Pinned, actual.Pinned)
-	assert.Equal(t, expected.Photo, actual.Photo)
-	assert.Equal(t, expected.Taxonomies, actual.Taxonomies)
-	assert.Equal(t, expected.Properties, actual.Properties)
-	assert.Equal(t, expected.Author, actual.Author)
-	assert.WithinDuration(t, expected.Published, actual.Published, time.Hour*24)
-}
-
-func TestNewDownCache(t *testing.T) {
-	markPath, dataPath := setupTestEnvironment(t)
-	defer cleanupTestEnvironment(t, markPath, dataPath)
-
-	dg := createDownCache(t, markPath, dataPath)
-
-	defer func(dg *downcache.DownCache) {
-		_ = dg.Close()
-	}(dg)
-
-	assert.NotNil(t, dg)
-}
-
-func TestDownCache_Reindex(t *testing.T) {
-	markPath, dataPath := setupTestEnvironment(t)
-	defer cleanupTestEnvironment(t, markPath, dataPath)
-
-	dg := createDownCache(t, markPath, dataPath)
-
-	defer func(dg *downcache.DownCache) {
-		_ = dg.Close()
-	}(dg)
-
-	assert.NotNil(t, dg)
-
-	// Reindex the files
-	counts, err := dg.Reindex()
-	require.NoError(t, err)
-
-	assert.Equal(t, 2, counts["pages"])
-	assert.Equal(t, 6, counts["articles"])
-}
-
-func TestDownCache_GetDocument(t *testing.T) {
-	markPath, dataPath := setupTestEnvironment(t)
-	defer cleanupTestEnvironment(t, markPath, dataPath)
-
-	dg := createDownCache(t, markPath, dataPath)
-
-	defer func(dg *downcache.DownCache) {
-		_ = dg.Close()
-	}(dg)
-
-	assert.NotNil(t, dg)
-
-	// Reindex the files
-	_, err := dg.Reindex()
-	require.NoError(t, err)
-
-	// Create table-driven tests to get posts and compare the results
-	cases := []struct {
-		name     string
-		path     string
-		expected *downcache.Post
-	}{
-		{
-			name: "Get published page",
-			path: "pages/published-page",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Page 1",
-				Subtitle:          "Page 1 subtitle",
-				Summary:           "Page 1 summary",
-				Slug:              "published-page",
-				Content:           "<p>Page 1 content.</p>\n",
-				Status:            "published",
-				PostType:          "page",
-			},
-		},
-		{
-			name: "Get Unpublished page",
-			path: "pages/unpublished-page",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Page 2",
-				Subtitle:          "",
-				Summary:           "Page 2 summary",
-				Slug:              "unpublished-page",
-				Content:           "<p>Page 2 content.</p>\n",
-				Status:            "draft",
-				PostType:          "page",
-			},
-		},
-		{
-			name: "Get published article (YAML)",
-			path: "articles/published-article",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Published Article",
-				Subtitle:          "Published article subtitle",
-				Summary:           "Published article summary",
-				Slug:              "published-article",
-				Content:           "<p>Published article content.</p>\n",
-				Status:            "published",
-				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
-				PostType:          "article",
-				Pinned:            true,
-				Photo:             "/images/featured.jpg",
-				Author:            []string{"author1"},
-				Taxonomies: map[string][]string{
-					"tags":       {"tag1", "tag2", "tag3"},
-					"categories": {"cat1", "cat2", "cat3"},
-				},
-				Properties: map[string]interface{}{
-					"key1": "value1",
-					"key2": "value2",
-				},
-			},
-		},
-		{
-			name: "Get published article (TOML)",
-			path: "articles/published-toml-article",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Published TOML Article",
-				Subtitle:          "Published article subtitle",
-				Summary:           "Published article summary",
-				Slug:              "published-toml-article",
-				Content:           "<p>Published article content.</p>\n",
-				Status:            "published",
-				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
-				PostType:          "article",
-				Pinned:            true,
-				Photo:             "/images/featured.jpg",
-				Author:            []string{"author1"},
-				Taxonomies: map[string][]string{
-					"tags":       {"tag1", "tag2"},
-					"categories": {"cat1", "cat2"},
-				},
-				Properties: map[string]interface{}{
-					"key1": "value1",
-					"key2": "value2",
-				},
-			},
-		},
-		{
-			name: "Get published NESTED article",
-			path: "articles/nested/nested-article",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Nested FOOBAR Article",
-				Subtitle:          "Nested article subtitle",
-				Summary:           "Nested article summary",
-				Slug:              "nested/nested-article",
-				Content:           "<p>Nested article content.</p>\n",
-				Status:            "published",
-				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
-				PostType:          "article",
-				Pinned:            true,
-				Photo:             "/images/featured.jpg",
-				Taxonomies: map[string][]string{
-					"tags":       {"tag1", "tag2"},
-					"categories": {"cat1", "cat2", "cat4"},
-				},
-				Properties: map[string]interface{}{
-					"key1": "value1",
-					"key2": "value2",
-				},
-			},
-		},
-		{
-			name: "Get date formatted article",
-			path: "articles/2024-08-21-article-with-date",
-			expected: &downcache.Post{
-				EstimatedReadTime: "< 1 min",
-				Name:              "Dated Article",
-				Subtitle:          "Dated article subtitle",
-				Summary:           "Dated article summary",
-				Slug:              "2024-08-21-article-with-date",
-				Content:           "<p>Dated article content.</p>\n",
-				Status:            "published",
-				Published:         time.Date(2024, 8, 21, 0, 0, 0, 0, time.UTC),
-				PostType:          "article",
-				FileTimePath:      "2024-08-21",
-			},
-		},
+func (fs *InMemoryFileSystem) Read(_ context.Context, postType, slug string) (*downcache.Post, error) {
+	key := fmt.Sprintf("%s:%s", postType, slug)
+	post, ok := fs.files[key]
+	if !ok {
+		return nil, fmt.Errorf("post not found")
 	}
+	return post, nil
+}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			doc, err := dg.GetPost(tc.path)
-			require.NoError(t, err)
+func (fs *InMemoryFileSystem) Write(_ context.Context, post *downcache.Post) error {
+	key := fmt.Sprintf("%s:%s", post.PostType, post.Slug)
+	fs.files[key] = post
+	return nil
+}
 
-			// Ignore the ETag value for now
-			doc.ETag = ""
+func (fs *InMemoryFileSystem) Delete(_ context.Context, postType, slug string) error {
+	key := fmt.Sprintf("%s:%s", postType, slug)
+	delete(fs.files, key)
+	return nil
+}
 
-			assertEqualDocuments(t, tc.expected, doc)
-		})
+func (fs *InMemoryFileSystem) Move(_ context.Context, oldType, oldSlug, newType, newSlug string) error {
+	oldKey := fmt.Sprintf("%s:%s", oldType, oldSlug)
+	newKey := fmt.Sprintf("%s:%s", newType, newSlug)
+	post, ok := fs.files[oldKey]
+	if !ok {
+		return fmt.Errorf("post not found")
+	}
+	post.PostType = newType
+	post.Slug = newSlug
+	fs.files[newKey] = post
+	delete(fs.files, oldKey)
+	return nil
+}
+
+func TestCacheManager_SyncAll(t *testing.T) {
+	fs := NewInMemoryFileSystem()
+	store := downcache.NewMemoryPostStore()
+	cm := downcache.NewDownCache(fs, store)
+
+	// Add some posts to the file system
+	_ = fs.Write(context.Background(), &downcache.Post{PostType: "article", Slug: "post1", Name: "Post 1"})
+	_ = fs.Write(context.Background(), &downcache.Post{PostType: "page", Slug: "about", Name: "About Us"})
+
+	err := cm.SyncAll(context.Background())
+	require.NoError(t, err)
+
+	// Verify that posts were added to the store
+	post, err := store.Get(context.Background(), "article", "post1")
+	require.NoError(t, err)
+	assert.Equal(t, "Post 1", post.Name)
+
+	post, err = store.Get(context.Background(), "page", "about")
+	require.NoError(t, err)
+	assert.Equal(t, "About Us", post.Name)
+}
+
+func TestCacheManager_CreateUpdateDelete(t *testing.T) {
+	fs := NewInMemoryFileSystem()
+	store := downcache.NewMemoryPostStore()
+	cm := downcache.NewDownCache(fs, store)
+
+	ctx := context.Background()
+	post := &downcache.Post{PostType: "article", Slug: "new-post", Name: "New Post"}
+
+	// Test Create
+	_, err := cm.Create(ctx, post)
+	require.NoError(t, err)
+
+	// Verify post exists in both fs and store
+	_, err = fs.Read(ctx, "article", "new-post")
+	require.NoError(t, err)
+	_, err = store.Get(ctx, "article", "new-post")
+	require.NoError(t, err)
+
+	// Test Update
+	updatedPost := &downcache.Post{PostType: "article", Slug: "updated-post", Name: "Updated Post"}
+	err = cm.Update(ctx, "article", "new-post", updatedPost)
+	require.NoError(t, err)
+
+	// Verify post was updated in both fs and store
+	fsPost, err := fs.Read(ctx, "article", "updated-post")
+	require.NoError(t, err)
+	assert.Equal(t, "Updated Post", fsPost.Name)
+	storePost, err := store.Get(ctx, "article", "updated-post")
+	require.NoError(t, err)
+	assert.Equal(t, "Updated Post", storePost.Name)
+
+	// Test Delete
+	err = cm.Delete(ctx, "article", "updated-post")
+	require.NoError(t, err)
+
+	// Verify post was deleted from both fs and store
+	_, err = fs.Read(ctx, "article", "updated-post")
+	assert.Error(t, err)
+	_, err = store.Get(ctx, "article", "updated-post")
+	assert.Error(t, err)
+}
+
+func TestCacheManager_Get(t *testing.T) {
+	fs := NewInMemoryFileSystem()
+	store := downcache.NewMemoryPostStore()
+	cm := downcache.NewDownCache(fs, store)
+
+	ctx := context.Background()
+	post := &downcache.Post{PostType: "article", Slug: "test-post", Name: "Test Post"}
+
+	// Add post to file system only
+	err := fs.Write(ctx, post)
+	require.NoError(t, err)
+
+	// Test Get
+	retrievedPost, err := cm.Get(ctx, "article", "test-post")
+	require.NoError(t, err)
+	assert.Equal(t, post.Name, retrievedPost.Name)
+
+	// Verify post was added to store
+	storePost, err := store.Get(ctx, "article", "test-post")
+	require.NoError(t, err)
+	assert.Equal(t, post.Name, storePost.Name)
+}
+
+func TestCacheManager_Search(t *testing.T) {
+	fs := NewInMemoryFileSystem()
+	store := downcache.NewMemoryPostStore()
+	cm := downcache.NewDownCache(fs, store)
+
+	ctx := context.Background()
+
+	// Add some posts to the store
+	_, _ = store.Create(ctx, &downcache.Post{PostType: "article", Slug: "post1", Name: "Post 1", Author: "John"})
+	_, _ = store.Create(ctx, &downcache.Post{PostType: "article", Slug: "post2", Name: "Post 2", Author: "Jane"})
+	_, _ = store.Create(ctx, &downcache.Post{PostType: "page", Slug: "about", Name: "About Us", Author: "John"})
+
+	// Test Search
+	options := downcache.FilterOptions{
+		FilterAuthor:   "John",
+		FilterPostType: downcache.PostType("article"),
+	}
+	posts, total, err := cm.Search(ctx, options)
+	require.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.NotNil(t, posts)
+	if len(posts) > 0 {
+		assert.Equal(t, "Post 1", posts[0].Name)
+	} else {
+		t.Error("expected posts to be non-empty")
 	}
 }

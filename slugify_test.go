@@ -10,9 +10,8 @@ import (
 )
 
 func TestConvertPathToSlug(t *testing.T) {
-	typeRules := downcache.DefaultPostTypes()
-	articleTypeRule := typeRules[downcache.PostTypeKeyArticle]
-	pageTypeRule := typeRules[downcache.PostTypeKeyPage]
+	articleTypeRule := downcache.PostTypeKeyArticle
+	pageTypeRule := downcache.PostTypeKeyPage
 
 	fileTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).UTC()
 	tests := []struct {

@@ -43,7 +43,7 @@ func SlugifyPath(rootPath, fullPath string, postType PostType) SlugPath {
 
 	// Trim and remove leading and trailing slashes
 	trimmedPath := strings.TrimSpace(strings.Trim(slugPath, "/"))
-	trimmedPath = strings.TrimPrefix(trimmedPath, postType.DirPattern)
+	trimmedPath = strings.TrimPrefix(trimmedPath, postType.String())
 
 	// Ensure no leading slash remains, which could happen if the original path
 	// had an extra slash after the prefix (e.g., "/articles/")

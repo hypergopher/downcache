@@ -57,3 +57,6 @@ pprof/*
 
 # Ignore c-tags
 tags
+
+# Ignore sqlite test data
+/sqlitestore/testdata/

@@ -3,27 +3,35 @@ package downcache
 import (
 	"bytes"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"go.abhg.dev/goldmark/frontmatter"
+	"gopkg.in/yaml.v3"
 )
 
-type MarkdownParserFunc func(input []byte) (*Post, error)
+type FrontmatterFormat string
 
-// DefaultMarkdownParser returns a MarkdownParserFunc that uses the default goldmark parser with the following extensions:
-// - GFM
-// - Typographer
-// - Footnote
-// - Frontmatter
-// It also enables the following parser options:
-// - AutoHeadingID
-// - Attribute
-func DefaultMarkdownParser() MarkdownParserFunc {
+const (
+	FrontmatterTOML FrontmatterFormat = "toml"
+	FrontmatterYAML FrontmatterFormat = "yaml"
+)
+
+// MarkdownProcessor handles markdown parsing and processing
+type MarkdownProcessor interface {
+	Process(input []byte) (*Post, error)
+	GenerateFrontmatter(meta *PostMeta, format FrontmatterFormat) (string, error)
+}
+
+// DefaultMarkdownProcessor is the default implementation of the MarkdownProcessor interface
+type DefaultMarkdownProcessor struct{}
+
+func (d DefaultMarkdownProcessor) Process(input []byte) (*Post, error) {
 	md := goldmark.New(
 		goldmark.WithExtensions(
 			extension.GFM,
@@ -37,47 +45,40 @@ func DefaultMarkdownParser() MarkdownParserFunc {
 		),
 	)
 
-	return func(input []byte) (*Post, error) {
-		return MarkdownToPost(md, input)
-	}
-}
-
-// ReadFile reads a markdown file from the filesystem and converts it to a Post.
-func ReadFile(markdownParser MarkdownParserFunc, rootPath, path string, postType PostType) (*Post, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat file: %w", err)
-	}
-
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// convert markdown to post
-	doc, err := markdownParser(file)
+	post, err := MarkdownToPost(md, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert markdown to post: %w", err)
 	}
 
-	doc.Updated = stat.ModTime()
-	doc.ETag = GenerateETag(doc.Content)
-	doc.EstimatedReadTime = EstimateReadingTime(doc.Content)
+	return post, nil
+}
 
-	slugPath := SlugifyPath(rootPath, path, postType)
+func (d DefaultMarkdownProcessor) GenerateFrontmatter(meta *PostMeta, format FrontmatterFormat) (string, error) {
+	var fm strings.Builder
 
-	// If the file has a date in the path, and the post doesn't have a published date in the frontmatter,
-	// set the published date to the file's date.
-	if slugPath.FileTime != nil && !doc.HasPublished() {
-		doc.Published = *slugPath.FileTime
+	if meta == nil {
+		return "", nil
 	}
 
-	doc.ID = PostID(postType.TypeKey.String(), slugPath.Slug)
-	doc.Slug = slugPath.Slug
-	doc.PostType = string(postType.TypeKey)
-	doc.FileTimePath = slugPath.FileTimePath
+	switch format {
+	case FrontmatterYAML:
+		yamlData, err := yaml.Marshal(meta)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal YAML frontmatter: %w", err)
+		}
+		fm.Write(yamlData)
 
-	return doc, nil
+	case FrontmatterTOML:
+		encoder := toml.NewEncoder(&fm)
+		if err := encoder.Encode(meta); err != nil {
+			return "", fmt.Errorf("failed to marshal TOML frontmatter: %w", err)
+		}
+
+	default:
+		return "", fmt.Errorf("unsupported frontmatter format: %s", format)
+	}
+
+	return fm.String(), nil
 }
 
 // GenerateETag generates an ETag for the content.
@@ -114,6 +115,8 @@ func EstimateReadingTime(content string) string {
 func MarkdownToPost(md goldmark.Markdown, content []byte) (*Post, error) {
 	var buf bytes.Buffer
 	ctx := parser.NewContext()
+	rawContent := string(content)
+
 	if err := md.Convert(content, &buf, parser.WithContext(ctx)); err != nil {
 		return nil, fmt.Errorf("failed to convert markdown: %w", err)
 	}
@@ -124,13 +127,15 @@ func MarkdownToPost(md goldmark.Markdown, content []byte) (*Post, error) {
 	if data == nil {
 		// No frontmatter found
 		return &Post{
-			Content: html,
+			Content: rawContent,
+			HTML:    html,
 		}, nil
 	}
 
 	if err := data.Decode(&meta); err != nil {
 		return &Post{
-			Content: html,
+			Content: rawContent,
+			HTML:    html,
 		}, fmt.Errorf("failed to decode frontmatter: %w", err)
 	}
 
@@ -143,12 +148,18 @@ func MarkdownToPost(md goldmark.Markdown, content []byte) (*Post, error) {
 	}
 
 	return &Post{
-		Author:     meta.Authors,
-		Content:    html,
-		Pinned:     meta.Pinned,
-		Photo:      meta.Photo,
-		Properties: meta.Properties,
-		Published:  meta.Published,
+		Author:            meta.Author,
+		Content:           rawContent,
+		HTML:              html,
+		ETag:              GenerateETag(rawContent),
+		EstimatedReadTime: EstimateReadingTime(rawContent),
+		Pinned:            meta.Pinned,
+		Photo:             meta.Photo,
+		Properties:        meta.Properties,
+		Published: sql.NullString{
+			String: meta.Published,
+			Valid:  strings.TrimSpace(meta.Published) != "",
+		},
 		Status:     meta.Status,
 		Subtitle:   meta.Subtitle,
 		Summary:    meta.Summary,
