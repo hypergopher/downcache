@@ -1,6 +1,7 @@
 package sqlitestore
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -13,12 +14,14 @@ import (
 
 var ErrPostNotFound = errors.New("post not found")
 
+// SQLiteStore is a SQLite implementation of the downcache.CacheStore interface.
 type SQLiteStore struct {
 	db        *sql.DB
 	dbPath    string
 	tableName string
 }
 
+// NewSQLiteStore creates a new SQLiteStore instance.
 func NewSQLiteStore(db *sql.DB, dbPath, tableName string) *SQLiteStore {
 	return &SQLiteStore{db: db, dbPath: dbPath, tableName: tableName}
 }
@@ -134,7 +137,7 @@ func (s *SQLiteStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQLiteStore) Clear() error {
+func (s *SQLiteStore) Clear(_ context.Context) error {
 	// delete all rows from tableName
 	query := `DELETE FROM ` + s.tableName + `;`
 
@@ -143,7 +146,7 @@ func (s *SQLiteStore) Clear() error {
 }
 
 // Create creates a new post in the database
-func (s *SQLiteStore) Create(post *downcache.Post) (*downcache.Post, error) {
+func (s *SQLiteStore) Create(_ context.Context, post *downcache.Post) (*downcache.Post, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -202,7 +205,10 @@ func (s *SQLiteStore) Create(post *downcache.Post) (*downcache.Post, error) {
 	return post, nil
 }
 
-func (s *SQLiteStore) Update(post *downcache.Post) error {
+// Update updates an existing post in the database
+// TODO: Use the oldType and oldSlug parameters to update the post via post_id and then
+// update the post_id to the new post_id if the post_type or slug has changed.
+func (s *SQLiteStore) Update(_ context.Context, oldType, oldSlug string, post *downcache.Post) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -212,20 +218,25 @@ func (s *SQLiteStore) Update(post *downcache.Post) error {
 		_ = tx.Rollback()
 	}(tx)
 
+	oldPostID := downcache.PostPathID(oldType, oldSlug)
+	newPostID := downcache.PostPathID(post.PostType, post.Slug)
+
 	query := `
 		UPDATE ` + s.tableName + ` SET
 			name = $1, slug = $2, post_type = $3,
 			author = $4, content_body = $5, etag = $6, estimated_read_time = $7,
 			pinned = $8, photo = $9, file_time_path = $10, published = $11,
-			status = $12, subtitle = $13, summary = $14, visibility = $15
-		WHERE post_id = $16 
+			status = $12, subtitle = $13, summary = $14, visibility = $15,
+			post_id = $16
+		WHERE post_id = $17 
 	`
 	if _, err = tx.Exec(query,
 		post.Name, post.Slug, post.PostType,
 		post.Author, post.Content, post.ETag, post.EstimatedReadTime,
 		post.Pinned, post.Photo, post.FileTimePath, post.Published,
 		post.Status, post.Subtitle, post.Summary, post.Visibility,
-		post.PostID); err != nil {
+		oldPostID,
+		newPostID); err != nil {
 		return err
 	}
 
@@ -254,7 +265,7 @@ func (s *SQLiteStore) Update(post *downcache.Post) error {
 	return tx.Commit()
 }
 
-func (s *SQLiteStore) Delete(postID string) error {
+func (s *SQLiteStore) Delete(_ context.Context, postType, slug string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -264,6 +275,7 @@ func (s *SQLiteStore) Delete(postID string) error {
 		_ = tx.Rollback()
 	}(tx)
 
+	postID := downcache.PostPathID(postType, slug)
 	query := `DELETE FROM ` + s.tableName + ` WHERE post_id = ?`
 	if _, err := tx.Exec(query, postID); err != nil {
 		return err
@@ -272,7 +284,9 @@ func (s *SQLiteStore) Delete(postID string) error {
 	return tx.Commit()
 }
 
-func (s *SQLiteStore) GetPostByPath(slug string) (*downcache.Post, error) {
+func (s *SQLiteStore) Get(_ context.Context, postType, slug string) (*downcache.Post, error) {
+	postID := downcache.PostPathID(postType, slug)
+
 	query := `
 		SELECT
 		    p.id, p.post_id, p.name, p.slug, p.post_type,
@@ -283,7 +297,7 @@ func (s *SQLiteStore) GetPostByPath(slug string) (*downcache.Post, error) {
 		WHERE p.post_id = ?
 	`
 
-	row := s.db.QueryRow(query, slug)
+	row := s.db.QueryRow(query, postID)
 	post, err := s.scanPost(row)
 	if err != nil {
 		return nil, err
@@ -332,7 +346,7 @@ func (s *SQLiteStore) GetPostByPath(slug string) (*downcache.Post, error) {
 	return post, nil
 }
 
-func (s *SQLiteStore) GetTaxonomies() ([]string, error) {
+func (s *SQLiteStore) GetTaxonomies(_ context.Context) ([]string, error) {
 	query := `SELECT DISTINCT taxonomy FROM ` + s.tableName + `_taxonomies`
 	rows, err := s.db.Query(query)
 	if err != nil {
@@ -355,7 +369,7 @@ func (s *SQLiteStore) GetTaxonomies() ([]string, error) {
 	return taxonomies, nil
 }
 
-func (s *SQLiteStore) GetTaxonomyTerms(taxonomy string) ([]string, error) {
+func (s *SQLiteStore) GetTaxonomyTerms(_ context.Context, taxonomy string) ([]string, error) {
 	query := `SELECT DISTINCT term FROM ` + s.tableName + `_taxonomies WHERE taxonomy = ?`
 	rows, err := s.db.Query(query, taxonomy)
 	if err != nil {
@@ -378,7 +392,7 @@ func (s *SQLiteStore) GetTaxonomyTerms(taxonomy string) ([]string, error) {
 	return terms, nil
 }
 
-func (s *SQLiteStore) Search(opts downcache.FilterOptions) ([]*downcache.Post, error) {
+func (s *SQLiteStore) Search(_ context.Context, opts downcache.FilterOptions) ([]*downcache.Post, error) {
 	query := `
 		SELECT DISTINCT
 		    p.id, p.post_id, p.name, p.slug, p.post_type,
