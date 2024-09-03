@@ -11,7 +11,7 @@ import (
 	"github.com/hypergopher/downcache"
 )
 
-// InMemoryFileSystem is a simple in-memory implementation of FileSystemManager
+// InMemoryFileSystem is a simple in-memory implementation of MarkdownFS for testing purposes.
 type InMemoryFileSystem struct {
 	files map[string]*downcache.Post
 }
@@ -72,107 +72,136 @@ func (fs *InMemoryFileSystem) Move(_ context.Context, oldType, oldSlug, newType,
 
 func TestCacheManager_SyncAll(t *testing.T) {
 	fs := NewInMemoryFileSystem()
-	store := downcache.NewMemoryPostStore()
+	store := downcache.NewMemoryCacheStore()
 	cm := downcache.NewDownCache(fs, store)
 
 	// Add some posts to the file system
-	_ = fs.Write(context.Background(), &downcache.Post{PostType: "article", Slug: "post1", Name: "Post 1"})
-	_ = fs.Write(context.Background(), &downcache.Post{PostType: "page", Slug: "about", Name: "About Us"})
+	_ = fs.Write(context.Background(), &downcache.Post{PostType: "articles", Slug: "post1", Name: "Post 1"})
+	_ = fs.Write(context.Background(), &downcache.Post{PostType: "pages", Slug: "about", Name: "About Us"})
 
 	err := cm.SyncAll(context.Background())
 	require.NoError(t, err)
 
 	// Verify that posts were added to the store
-	post, err := store.Get(context.Background(), "article", "post1")
+	post, err := store.Get(context.Background(), "articles", "post1")
 	require.NoError(t, err)
 	assert.Equal(t, "Post 1", post.Name)
 
-	post, err = store.Get(context.Background(), "page", "about")
+	post, err = store.Get(context.Background(), "pages", "about")
 	require.NoError(t, err)
 	assert.Equal(t, "About Us", post.Name)
 }
 
 func TestCacheManager_CreateUpdateDelete(t *testing.T) {
 	fs := NewInMemoryFileSystem()
-	store := downcache.NewMemoryPostStore()
+	store := downcache.NewMemoryCacheStore()
 	cm := downcache.NewDownCache(fs, store)
 
 	ctx := context.Background()
-	post := &downcache.Post{PostType: "article", Slug: "new-post", Name: "New Post"}
+	post := &downcache.Post{PostType: "articles", Slug: "new-post", Name: "New Post"}
 
 	// Test Create
 	_, err := cm.Create(ctx, post)
 	require.NoError(t, err)
 
 	// Verify post exists in both fs and store
-	_, err = fs.Read(ctx, "article", "new-post")
+	_, err = fs.Read(ctx, "articles", "new-post")
 	require.NoError(t, err)
-	_, err = store.Get(ctx, "article", "new-post")
+	_, err = store.Get(ctx, "articles", "new-post")
 	require.NoError(t, err)
 
 	// Test Update
-	updatedPost := &downcache.Post{PostType: "article", Slug: "updated-post", Name: "Updated Post"}
-	err = cm.Update(ctx, "article", "new-post", updatedPost)
+	updatedPost := &downcache.Post{PostType: "articles", Slug: "updated-post", Name: "Updated Post"}
+	err = cm.Update(ctx, "articles", "new-post", updatedPost)
 	require.NoError(t, err)
 
 	// Verify post was updated in both fs and store
-	fsPost, err := fs.Read(ctx, "article", "updated-post")
+	fsPost, err := fs.Read(ctx, "articles", "updated-post")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated Post", fsPost.Name)
-	storePost, err := store.Get(ctx, "article", "updated-post")
+	storePost, err := store.Get(ctx, "articles", "updated-post")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated Post", storePost.Name)
 
 	// Test Delete
-	err = cm.Delete(ctx, "article", "updated-post")
+	err = cm.Delete(ctx, "articles", "updated-post")
 	require.NoError(t, err)
 
 	// Verify post was deleted from both fs and store
-	_, err = fs.Read(ctx, "article", "updated-post")
+	_, err = fs.Read(ctx, "articles", "updated-post")
 	assert.Error(t, err)
-	_, err = store.Get(ctx, "article", "updated-post")
+	_, err = store.Get(ctx, "articles", "updated-post")
 	assert.Error(t, err)
 }
 
 func TestCacheManager_Get(t *testing.T) {
 	fs := NewInMemoryFileSystem()
-	store := downcache.NewMemoryPostStore()
+	store := downcache.NewMemoryCacheStore()
 	cm := downcache.NewDownCache(fs, store)
 
 	ctx := context.Background()
-	post := &downcache.Post{PostType: "article", Slug: "test-post", Name: "Test Post"}
+	post := &downcache.Post{PostType: "articles", Slug: "test-post", Name: "Test Post"}
 
 	// Add post to file system only
 	err := fs.Write(ctx, post)
 	require.NoError(t, err)
 
 	// Test Get
-	retrievedPost, err := cm.Get(ctx, "article", "test-post")
+	retrievedPost, err := cm.Get(ctx, "articles", "test-post")
 	require.NoError(t, err)
 	assert.Equal(t, post.Name, retrievedPost.Name)
 
 	// Verify post was added to store
-	storePost, err := store.Get(ctx, "article", "test-post")
+	storePost, err := store.Get(ctx, "articles", "test-post")
 	require.NoError(t, err)
 	assert.Equal(t, post.Name, storePost.Name)
 }
 
 func TestCacheManager_Search(t *testing.T) {
 	fs := NewInMemoryFileSystem()
-	store := downcache.NewMemoryPostStore()
+	store := downcache.NewMemoryCacheStore()
 	cm := downcache.NewDownCache(fs, store)
 
 	ctx := context.Background()
 
 	// Add some posts to the store
-	_, _ = store.Create(ctx, &downcache.Post{PostType: "article", Slug: "post1", Name: "Post 1", Author: "John"})
-	_, _ = store.Create(ctx, &downcache.Post{PostType: "article", Slug: "post2", Name: "Post 2", Author: "Jane"})
-	_, _ = store.Create(ctx, &downcache.Post{PostType: "page", Slug: "about", Name: "About Us", Author: "John"})
+	_, _ = store.Create(ctx, &downcache.Post{
+		PostType: "articles",
+		Slug:     "post1",
+		Name:     "Post 1",
+		Author:   "John",
+		Properties: map[string]string{
+			"series": "foo",
+		},
+		Taxonomies: map[string][]string{
+			"tags":       {"tag1", "tag2"},
+			"categories": {"cat1"},
+		},
+	})
+	_, _ = store.Create(ctx, &downcache.Post{
+		PostType: "articles",
+		Slug:     "post2",
+		Name:     "Post 2",
+		Author:   "Jane",
+		Properties: map[string]string{
+			"series": "foo",
+		},
+		Taxonomies: map[string][]string{
+			"tags": {"tag2"},
+		},
+	},
+	)
+	_, _ = store.Create(ctx, &downcache.Post{
+		PostType: "pages",
+		Slug:     "about",
+		Name:     "About Us",
+		Author:   "John"},
+	)
 
 	// Test Search
 	options := downcache.FilterOptions{
 		FilterAuthor:   "John",
-		FilterPostType: downcache.PostType("article"),
+		FilterPostType: downcache.PostType("articles"),
 	}
 	posts, total, err := cm.Search(ctx, options)
 	require.NoError(t, err)
@@ -180,6 +209,25 @@ func TestCacheManager_Search(t *testing.T) {
 	assert.NotNil(t, posts)
 	if len(posts) > 0 {
 		assert.Equal(t, "Post 1", posts[0].Name)
+	} else {
+		t.Error("expected posts to be non-empty")
+	}
+
+	// Test Search with properties
+	options = downcache.FilterOptions{
+		FilterPostType: downcache.PostType("articles"),
+		FilterProperties: []downcache.KeyValueFilter{
+			{Key: "series", Value: "foo"},
+		},
+	}
+
+	posts, total, err = cm.Search(ctx, options)
+	require.NoError(t, err)
+	assert.Equal(t, 2, total)
+	assert.NotNil(t, posts)
+	if len(posts) > 0 {
+		assert.Equal(t, "Post 1", posts[0].Name)
+		assert.Equal(t, "Post 2", posts[1].Name)
 	} else {
 		t.Error("expected posts to be non-empty")
 	}

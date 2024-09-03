@@ -7,11 +7,11 @@ import (
 
 // DownCache is the main entry point for the markdown cache system
 type DownCache struct {
-	fs    FileSystemManager
-	store PostStore
+	fs    MarkdownFS
+	store CacheStore
 }
 
-func NewDownCache(fs FileSystemManager, store PostStore) *DownCache {
+func NewDownCache(fs MarkdownFS, store CacheStore) *DownCache {
 	return &DownCache{fs: fs, store: store}
 }
 

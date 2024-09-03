@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// FileSystemManager handles file system operations for markdown files
-type FileSystemManager interface {
+// MarkdownFS handles file system operations for markdown files
+type MarkdownFS interface {
 	Walk(ctx context.Context) (<-chan *Post, <-chan error)
 	Read(ctx context.Context, postType, slug string) (*Post, error)
 	Write(ctx context.Context, post *Post) error
@@ -17,18 +17,18 @@ type FileSystemManager interface {
 	Move(ctx context.Context, oldType, oldSlug, newType, newSlug string) error
 }
 
-// LocalFileSystemManager implements FileSystemManager for the local file system
-type LocalFileSystemManager struct {
+// LocalMarkdownFS implements MarkdownFS for the local file system
+type LocalMarkdownFS struct {
 	rootDir string
 	proc    MarkdownProcessor
 	format  FrontmatterFormat
 }
 
-func NewLocalFileSystemManager(rootDir string, proc MarkdownProcessor, format FrontmatterFormat) *LocalFileSystemManager {
-	return &LocalFileSystemManager{rootDir: rootDir, proc: proc, format: format}
+func NewLocalMarkdownFS(rootDir string, proc MarkdownProcessor, format FrontmatterFormat) *LocalMarkdownFS {
+	return &LocalMarkdownFS{rootDir: rootDir, proc: proc, format: format}
 }
 
-func (fs *LocalFileSystemManager) Walk(ctx context.Context) (<-chan *Post, <-chan error) {
+func (fs *LocalMarkdownFS) Walk(ctx context.Context) (<-chan *Post, <-chan error) {
 	posts := make(chan *Post)
 	errs := make(chan error, 1)
 
@@ -89,7 +89,7 @@ func (fs *LocalFileSystemManager) Walk(ctx context.Context) (<-chan *Post, <-cha
 	return posts, errs
 }
 
-func (fs *LocalFileSystemManager) Read(_ context.Context, postType, slug string) (*Post, error) {
+func (fs *LocalMarkdownFS) Read(_ context.Context, postType, slug string) (*Post, error) {
 	path := fs.buildPath(postType, slug)
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -114,7 +114,7 @@ func (fs *LocalFileSystemManager) Read(_ context.Context, postType, slug string)
 	return post, nil
 }
 
-func (fs *LocalFileSystemManager) Write(_ context.Context, post *Post) error {
+func (fs *LocalMarkdownFS) Write(_ context.Context, post *Post) error {
 	path := fs.buildPath(post.PostType, post.Slug)
 
 	err := os.MkdirAll(filepath.Dir(path), 0755)
@@ -141,7 +141,7 @@ func (fs *LocalFileSystemManager) Write(_ context.Context, post *Post) error {
 	return os.WriteFile(path, []byte(post.Content), 0644)
 }
 
-func (fs *LocalFileSystemManager) Delete(_ context.Context, postType, slug string) error {
+func (fs *LocalMarkdownFS) Delete(_ context.Context, postType, slug string) error {
 	path := fs.buildPath(postType, slug)
 	err := os.Remove(path)
 	if err != nil {
@@ -164,7 +164,7 @@ func (fs *LocalFileSystemManager) Delete(_ context.Context, postType, slug strin
 	return nil
 }
 
-func (fs *LocalFileSystemManager) Move(_ context.Context, oldType, oldSlug, newType, newSlug string) error {
+func (fs *LocalMarkdownFS) Move(_ context.Context, oldType, oldSlug, newType, newSlug string) error {
 	oldPath := fs.buildPath(oldType, oldSlug)
 	newPath := fs.buildPath(newType, newSlug)
 
@@ -196,6 +196,6 @@ func (fs *LocalFileSystemManager) Move(_ context.Context, oldType, oldSlug, newT
 	return nil
 }
 
-func (fs *LocalFileSystemManager) buildPath(postType, slug string) string {
+func (fs *LocalMarkdownFS) buildPath(postType, slug string) string {
 	return filepath.Join(fs.rootDir, postType, slug+".md")
 }

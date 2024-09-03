@@ -18,7 +18,7 @@ var realProcessor downcache.MarkdownProcessor = &downcache.DefaultMarkdownProces
 
 func TestLocalFileSystemManager_Walk(t *testing.T) {
 	testDataDir := filepath.Join("testdata")
-	fsm := downcache.NewLocalFileSystemManager(testDataDir, realProcessor, downcache.FrontmatterYAML)
+	fsm := downcache.NewLocalMarkdownFS(testDataDir, realProcessor, downcache.FrontmatterYAML)
 
 	posts, errs := fsm.Walk(context.Background())
 
@@ -31,7 +31,7 @@ func TestLocalFileSystemManager_Walk(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	assert.Len(t, receivedPosts, 3) // Assuming we have 3 markdown files in testdata
+	assert.Len(t, receivedPosts, 5) // Assuming we have 3 markdown files in testdata
 
 	expectedPosts := map[string]*downcache.Post{
 		"articles:post1": {
@@ -42,6 +42,35 @@ func TestLocalFileSystemManager_Walk(t *testing.T) {
 			Status:    "published",
 			Pinned:    true,
 			Published: sql.NullString{String: "2024-01-01", Valid: true},
+			Taxonomies: map[string][]string{
+				"tags":       {"tag1", "tag2"},
+				"categories": {"cat1", "cat2"},
+			},
+		},
+		"articles:post2": {
+			PostType:  "articles",
+			Slug:      "post2",
+			Name:      "Second Blog Post",
+			Author:    "Jane Smith",
+			Status:    "published",
+			Pinned:    false,
+			Published: sql.NullString{String: "2024-01-02", Valid: true},
+			Taxonomies: map[string][]string{
+				"tags": {"tag2"},
+			},
+		},
+		"articles:nested/post3": {
+			PostType:  "articles",
+			Slug:      "nested/post3",
+			Name:      "Third Blog Post",
+			Author:    "John Doe",
+			Status:    "draft",
+			Pinned:    true,
+			Published: sql.NullString{String: "2024-01-03", Valid: true},
+			Taxonomies: map[string][]string{
+				"tags":       {"tag3"},
+				"categories": {"cat3"},
+			},
 		},
 		"pages:about": {
 			PostType: "pages",
@@ -70,12 +99,15 @@ func TestLocalFileSystemManager_Walk(t *testing.T) {
 		assert.Equal(t, expected.Published, post.Published, "Post: %s:%s", post.PostType, post.Slug)
 		assert.NotEmpty(t, post.Content)
 		assert.NotEmpty(t, post.HTML)
+		if len(expected.Taxonomies) > 0 {
+			assert.EqualValues(t, expected.Taxonomies, post.Taxonomies)
+		}
 	}
 }
 
 func TestLocalFileSystemManager_ReadWriteDelete(t *testing.T) {
 	testDataDir := filepath.Join("testdata")
-	fsm := downcache.NewLocalFileSystemManager(testDataDir, realProcessor, downcache.FrontmatterYAML)
+	fsm := downcache.NewLocalMarkdownFS(testDataDir, realProcessor, downcache.FrontmatterYAML)
 
 	testCases := []struct {
 		name     string
@@ -88,6 +120,12 @@ func TestLocalFileSystemManager_ReadWriteDelete(t *testing.T) {
 			postType: "articles",
 			slug:     "post1",
 			filename: "post1.md",
+		},
+		{
+			name:     "Nested Article",
+			postType: "articles",
+			slug:     "nested/post3",
+			filename: "nested/post3.md",
 		},
 		{
 			name:     "Page",
@@ -141,7 +179,7 @@ func TestLocalFileSystemManager_ReadWriteDelete(t *testing.T) {
 
 func TestLocalFileSystemManager_Move(t *testing.T) {
 	testDataDir := filepath.Join("testdata")
-	fsm := downcache.NewLocalFileSystemManager(testDataDir, realProcessor, downcache.FrontmatterYAML)
+	fsm := downcache.NewLocalMarkdownFS(testDataDir, realProcessor, downcache.FrontmatterYAML)
 
 	// Create a temporary post for moving
 	tempType := "articles"
@@ -192,7 +230,7 @@ This is a temporary post for testing the move operation.`
 
 func TestLocalFileSystemManager_Concurrency(t *testing.T) {
 	testDataDir := filepath.Join("testdata")
-	fsm := downcache.NewLocalFileSystemManager(testDataDir, realProcessor, downcache.FrontmatterYAML)
+	fsm := downcache.NewLocalMarkdownFS(testDataDir, realProcessor, downcache.FrontmatterYAML)
 
 	concurrentOps := 100
 	errChan := make(chan error, concurrentOps)

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type PostStore interface {
+type CacheStore interface {
 	// Init initializes the post store, such as creating the necessary tables or indexes.
 	Init() error
 	// Clear clears all data from the post store and resets the store.
@@ -32,26 +32,26 @@ type PostStore interface {
 	Update(ctx context.Context, oldType, oldSlug string, post *Post) error
 }
 
-// MemoryPostStore implements PostStore interface using in-memory storage
-type MemoryPostStore struct {
+// MemoryCacheStore implements CacheStore interface using in-memory storage
+type MemoryCacheStore struct {
 	posts map[string]*Post
 	mu    sync.RWMutex
 }
 
-// NewMemoryPostStore creates a new MemoryPostStore
-func NewMemoryPostStore() *MemoryPostStore {
-	return &MemoryPostStore{
+// NewMemoryCacheStore creates a new MemoryCacheStore
+func NewMemoryCacheStore() *MemoryCacheStore {
+	return &MemoryCacheStore{
 		posts: make(map[string]*Post),
 	}
 }
 
 // Init initializes the post store
-func (m *MemoryPostStore) Init() error {
+func (m *MemoryCacheStore) Init() error {
 	return nil
 }
 
 // Clear clears all data from the post store
-func (m *MemoryPostStore) Clear(ctx context.Context) error {
+func (m *MemoryCacheStore) Clear(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -60,12 +60,12 @@ func (m *MemoryPostStore) Clear(ctx context.Context) error {
 }
 
 // Close closes the post store
-func (m *MemoryPostStore) Close() error {
+func (m *MemoryCacheStore) Close() error {
 	return nil
 }
 
 // Create adds a new post to the store
-func (m *MemoryPostStore) Create(ctx context.Context, post *Post) (*Post, error) {
+func (m *MemoryCacheStore) Create(ctx context.Context, post *Post) (*Post, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -79,7 +79,7 @@ func (m *MemoryPostStore) Create(ctx context.Context, post *Post) (*Post, error)
 }
 
 // Update updates an existing post in the store
-func (m *MemoryPostStore) Update(ctx context.Context, oldType, oldSlug string, post *Post) error {
+func (m *MemoryCacheStore) Update(ctx context.Context, oldType, oldSlug string, post *Post) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -95,7 +95,7 @@ func (m *MemoryPostStore) Update(ctx context.Context, oldType, oldSlug string, p
 }
 
 // Delete removes a post from the store
-func (m *MemoryPostStore) Delete(ctx context.Context, postType, slug string) error {
+func (m *MemoryCacheStore) Delete(ctx context.Context, postType, slug string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -109,7 +109,7 @@ func (m *MemoryPostStore) Delete(ctx context.Context, postType, slug string) err
 }
 
 // Get retrieves a post from the store
-func (m *MemoryPostStore) Get(ctx context.Context, postType, slug string) (*Post, error) {
+func (m *MemoryCacheStore) Get(ctx context.Context, postType, slug string) (*Post, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -123,7 +123,7 @@ func (m *MemoryPostStore) Get(ctx context.Context, postType, slug string) (*Post
 }
 
 // Search searches for posts based on the provided FilterOptions
-func (m *MemoryPostStore) Search(ctx context.Context, options FilterOptions) ([]*Post, int, error) {
+func (m *MemoryCacheStore) Search(ctx context.Context, options FilterOptions) ([]*Post, int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -168,7 +168,7 @@ func (m *MemoryPostStore) Search(ctx context.Context, options FilterOptions) ([]
 
 // GetTaxonomies returns a list of taxonomies.
 // TODO: This is inefficient and should be optimized for large datasets.
-func (m *MemoryPostStore) GetTaxonomies(ctx context.Context) ([]string, error) {
+func (m *MemoryCacheStore) GetTaxonomies(ctx context.Context) ([]string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -184,7 +184,7 @@ func (m *MemoryPostStore) GetTaxonomies(ctx context.Context) ([]string, error) {
 
 // GetTaxonomyTerms returns a list of terms for a given taxonomy.
 // TODO: This is inefficient and should be optimized for large datasets.
-func (m *MemoryPostStore) GetTaxonomyTerms(ctx context.Context, taxonomy string) ([]string, error) {
+func (m *MemoryCacheStore) GetTaxonomyTerms(ctx context.Context, taxonomy string) ([]string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -199,7 +199,7 @@ func (m *MemoryPostStore) GetTaxonomyTerms(ctx context.Context, taxonomy string)
 }
 
 // postMatchesFilters checks if a post matches the provided filters
-func (m *MemoryPostStore) postMatchesFilters(post *Post, options FilterOptions) bool {
+func (m *MemoryCacheStore) postMatchesFilters(post *Post, options FilterOptions) bool {
 	if options.FilterPostType != PostTypeKeyAny && string(options.FilterPostType) != post.PostType {
 		return false
 	}
@@ -240,7 +240,7 @@ func (m *MemoryPostStore) postMatchesFilters(post *Post, options FilterOptions) 
 }
 
 // matchesKeyValueFilter checks if a map contains a key-value pair
-func (m *MemoryPostStore) matchesKeyValueFilter(data map[string]string, filter KeyValueFilter) bool {
+func (m *MemoryCacheStore) matchesKeyValueFilter(data map[string]string, filter KeyValueFilter) bool {
 	value, exists := data[filter.Key]
 	if !exists {
 		return false
@@ -252,7 +252,7 @@ func (m *MemoryPostStore) matchesKeyValueFilter(data map[string]string, filter K
 }
 
 // matchesKeyValueFilterSlice checks if a map contains a key-value pair in a slice
-func (m *MemoryPostStore) matchesKeyValueFilterSlice(data map[string][]string, filter KeyValueFilter) bool {
+func (m *MemoryCacheStore) matchesKeyValueFilterSlice(data map[string][]string, filter KeyValueFilter) bool {
 	values, exists := data[filter.Key]
 	if !exists {
 		return false
@@ -268,7 +268,7 @@ func (m *MemoryPostStore) matchesKeyValueFilterSlice(data map[string][]string, f
 }
 
 // sortPosts sorts the posts based on the provided sort fields
-func (m *MemoryPostStore) sortPosts(posts []*Post, sortBy []string) {
+func (m *MemoryCacheStore) sortPosts(posts []*Post, sortBy []string) {
 	sort.Slice(posts, func(i, j int) bool {
 		for _, field := range sortBy {
 			descending := false
@@ -325,7 +325,7 @@ func compareTime(a, b time.Time) int {
 }
 
 // splitPinned separates pinned posts from non-pinned posts
-func (m *MemoryPostStore) splitPinned(posts []*Post) (pinned, nonPinned []*Post) {
+func (m *MemoryCacheStore) splitPinned(posts []*Post) (pinned, nonPinned []*Post) {
 	for _, post := range posts {
 		if post.Pinned {
 			pinned = append(pinned, post)
@@ -337,7 +337,7 @@ func (m *MemoryPostStore) splitPinned(posts []*Post) (pinned, nonPinned []*Post)
 }
 
 // getPaginationBounds calculates the start and end indices for pagination
-func (m *MemoryPostStore) getPaginationBounds(pageNum, pageSize, totalItems int) (start, end int) {
+func (m *MemoryCacheStore) getPaginationBounds(pageNum, pageSize, totalItems int) (start, end int) {
 	start = (pageNum - 1) * pageSize
 	end = start + pageSize
 	if end > totalItems {
@@ -347,7 +347,7 @@ func (m *MemoryPostStore) getPaginationBounds(pageNum, pageSize, totalItems int)
 }
 
 // makeKey creates a unique key for a post based on its type and slug
-func (m *MemoryPostStore) makeKey(postType, slug string) string {
+func (m *MemoryCacheStore) makeKey(postType, slug string) string {
 	return fmt.Sprintf("%s:%s", postType, slug)
 }
 
