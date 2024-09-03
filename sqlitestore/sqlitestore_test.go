@@ -1,6 +1,7 @@
 package sqlitestore_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func createTestPost(t *testing.T, store *sqlitestore.SQLiteStore, testPost *down
 	}
 
 	// Create the post
-	post, err := store.Create(post)
+	post, err := store.Create(context.Background(), post)
 	if err != nil {
 		t.Fatalf("Failed to create post: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestSQLiteStore_Get(t *testing.T) {
 	}
 
 	// Get the post
-	post2, err := store.GetPostByPath(post.PostID)
+	post2, err := store.Get(context.Background(), post.PostType, post.Slug)
 	if err != nil {
 		t.Fatalf("Failed to get post: %v", err)
 	}
@@ -171,13 +172,16 @@ func TestSQLiteStore_Update(t *testing.T) {
 		t.Fatalf("Post is nil")
 	}
 
+	oldType := post.PostType
+	oldSlug := post.Slug
+
 	// Update the post
 	post.Name = "Updated Test Post"
 	post.Taxonomies = map[string][]string{
 		"tags":       {"tag3", "tag4"},
 		"categories": {"cat3", "cat4"},
 	}
-	err := store.Update(post)
+	err := store.Update(context.Background(), oldType, oldSlug, post)
 	if err != nil {
 		t.Fatalf("Failed to update post: %v", err)
 	}
@@ -206,13 +210,13 @@ func TestSQLiteStore_Delete(t *testing.T) {
 	}
 
 	// Delete the post
-	err := store.Delete(post.PostID)
+	err := store.Delete(context.Background(), post.PostType, post.Slug)
 	if err != nil {
 		t.Fatalf("Failed to delete post: %v", err)
 	}
 
 	// Get the post
-	_, err = store.GetPostByPath(post.PostID)
+	_, err = store.Get(context.Background(), post.PostType, post.Slug)
 	assert.Error(t, err)
 }
 
@@ -334,7 +338,7 @@ func TestSQLiteStore_Search(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Search for posts
-			posts, err := store.Search(tc.filter)
+			posts, err := store.Search(context.Background(), tc.filter)
 			if err != nil {
 				t.Fatalf("Failed to search posts: %v", err)
 			}
