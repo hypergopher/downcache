@@ -175,7 +175,6 @@ func (s *SQLiteStore) Create(_ context.Context, post *downcache.Post) (*downcach
 		post.Author, post.Content, post.ETag, post.EstimatedReadTime,
 		post.Pinned, post.Photo, post.FileTimePath, post.Published,
 		post.Status, post.Subtitle, post.Summary, post.Visibility)
-
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +465,7 @@ func (s *SQLiteStore) Search(_ context.Context, opts downcache.FilterOptions) ([
 		_ = rows.Close()
 	}(rows)
 
-	//var posts []*downcache.Post
+	// var posts []*downcache.Post
 	postsMap := make(map[int64]*downcache.Post)
 	postIDs := make([]any, 0)
 	for rows.Next() {
@@ -475,7 +474,7 @@ func (s *SQLiteStore) Search(_ context.Context, opts downcache.FilterOptions) ([
 			return nil, err
 		}
 		postsMap[post.ID] = post
-		//posts = append(posts, post)
+		// posts = append(posts, post)
 		postIDs = append(postIDs, post.ID)
 	}
 
@@ -527,7 +526,8 @@ func (s *SQLiteStore) Search(_ context.Context, opts downcache.FilterOptions) ([
 
 func (s *SQLiteStore) scanPost(scanner interface {
 	Scan(dest ...interface{}) error
-}) (*downcache.Post, error) {
+},
+) (*downcache.Post, error) {
 	var p downcache.Post
 	var properties, taxonomies string
 	if err := scanner.Scan(

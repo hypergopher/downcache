@@ -83,7 +83,7 @@ func (m *MemoryCacheStore) Update(ctx context.Context, oldType, oldSlug string, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	//key := m.makeKey(post.PostType, post.Slug)
+	// key := m.makeKey(post.PostType, post.Slug)
 	key := m.makeKey(oldType, oldSlug)
 	if _, exists := m.posts[key]; !exists {
 		return fmt.Errorf("post not found: %s", key)

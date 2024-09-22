@@ -34,7 +34,7 @@ type TestPost struct {
 // mergePost merges two posts together, preferring the values in the base post
 func mergePost(slug, fileTimePath string, basePost *downcache.Post, testPost *TestPost) *downcache.Post {
 	copyPost := *basePost
-	//copyPost.PostID = downcache.PostPathID(basePost.PostType, slug)
+	// copyPost.PostID = downcache.PostPathID(basePost.PostType, slug)
 	copyPost.Slug = slug
 	copyPost.FileTimePath = fileTimePath
 
@@ -179,31 +179,30 @@ func TestPostMethods(t *testing.T) {
 	author2 := "author2"
 	updatedTime := time.Now().Format("2006-01-02")
 	publishedTime := "2024-08-01"
-	baselinePost :=
-		&downcache.Post{
-			Slug:              "test",
-			PostType:          "articles",
-			Author:            "author1",
-			Content:           "<h1>Test</h1>",
-			ETag:              "",
-			EstimatedReadTime: "< 1 min",
-			Pinned:            false,
-			Photo:             "/path/to/photo.jpg",
-			FileTimePath:      "",
-			Updated:           updatedTime,
-			Name:              "Test",
-			Properties:        map[string]string{},
-			Published:         sql.NullString{String: publishedTime, Valid: true},
-			Status:            "published",
-			Subtitle:          "Subtitle test",
-			Summary:           "Test summary",
-			Taxonomies: map[string][]string{
-				"tags": {
-					"tag1",
-				},
+	baselinePost := &downcache.Post{
+		Slug:              "test",
+		PostType:          "articles",
+		Author:            "author1",
+		Content:           "<h1>Test</h1>",
+		ETag:              "",
+		EstimatedReadTime: "< 1 min",
+		Pinned:            false,
+		Photo:             "/path/to/photo.jpg",
+		FileTimePath:      "",
+		Updated:           updatedTime,
+		Name:              "Test",
+		Properties:        map[string]string{},
+		Published:         sql.NullString{String: publishedTime, Valid: true},
+		Status:            "published",
+		Subtitle:          "Subtitle test",
+		Summary:           "Test summary",
+		Taxonomies: map[string][]string{
+			"tags": {
+				"tag1",
 			},
-			Visibility: "public",
-		}
+		},
+		Visibility: "public",
+	}
 
 	cases := []struct {
 		name                 string
@@ -297,7 +296,7 @@ func TestPostMethods(t *testing.T) {
 			post := mergePost(tc.slug, tc.fileTimePath, baselinePost, tc.post)
 
 			// Test each post method
-			//assert.Equal(t, tc.postID, post.PostID)
+			// assert.Equal(t, tc.postID, post.PostID)
 			assert.Equal(t, tc.slug, post.Slug)
 			if tc.post.Published != nil {
 				assert.Equal(t, tc.slugWithoutTime, post.SlugWithoutDate())

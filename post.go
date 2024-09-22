@@ -48,7 +48,7 @@ type PostMeta struct {
 	Subtitle   string              `yaml:"subtitle,omitempty" toml:"subtitle,omitempty"`
 	Summary    string              `yaml:"summary,omitempty" toml:"summary,omitempty"`
 	Taxonomies map[string][]string `yaml:"taxonomies,omitempty" toml:"taxonomies,omitempty"`
-	//Updated    time.Time           `yaml:"updated,omitempty" toml:"updated,omitempty"`
+	// Updated    time.Time           `yaml:"updated,omitempty" toml:"updated,omitempty"`
 	Visibility string `yaml:"visibility,omitempty" toml:"visibility,omitempty"`
 }
 

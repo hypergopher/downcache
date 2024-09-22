@@ -72,7 +72,7 @@ func SlugifyPath(rootPath, fullPath string, postType PostType) SlugPath {
 		if parsedTime, err := time.Parse("2006-01-02", possibleDatePath); err == nil {
 			fileTime = &parsedTime
 			fileTimePath = possibleDatePath
-			//slugPath = strings.TrimSuffix(slugPath[11:], "/")
+			// slugPath = strings.TrimSuffix(slugPath[11:], "/")
 		}
 	}
 

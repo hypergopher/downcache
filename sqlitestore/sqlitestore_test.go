@@ -17,21 +17,21 @@ import (
 func setupTestEnvironment(t *testing.T) *sqlitestore.SQLiteStore {
 	// Ensure the testdata directory exists
 	if _, err := os.Stat("testdata/data"); os.IsNotExist(err) {
-		if err := os.Mkdir("testdata/data", 0755); err != nil {
+		if err := os.Mkdir("testdata/data", 0o755); err != nil {
 			t.Fatalf("Failed to create testdata directory: %v", err)
 		}
 	}
 
-	//Remove any existing test database
+	// Remove any existing test database
 	tempDir, err := os.MkdirTemp("", "test_sqlitestore")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 
-	//Create a new SQLiteStore db
+	// Create a new SQLiteStore db
 	dbPath := filepath.Join(tempDir, "test.db")
 
-	//dbPath := "/Users/patrick/code/hypergopher/downcache/sqlitestore/testdata/data/test.db"
+	// dbPath := "/Users/patrick/code/hypergopher/downcache/sqlitestore/testdata/data/test.db"
 
 	// Create a new SQLiteStore db using modernc.org/sqlite
 	db, err := NewDB(dbPath)

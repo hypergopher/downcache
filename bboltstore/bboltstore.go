@@ -249,7 +249,6 @@ func (bbs *BBoltStore) GetBySlug(slug string) (*downcache.Post, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("error getting post %s: %w", slug, err)
 	}
@@ -279,7 +278,6 @@ func (bbs *BBoltStore) GetTaxonomyTerms(taxonomy string) ([]string, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("error getting taxonomy terms: %w", err)
 	}
@@ -349,7 +347,7 @@ func (bbs *BBoltStore) Search(filter downcache.FilterOptions) (downcache.Paginat
 func (bbs *BBoltStore) initBolt() (*bbolt.DB, error) {
 	var err error
 	boltPath := filepath.Join(bbs.dataDir, bboltFile)
-	boltIndex, err := bbolt.Open(boltPath, 0600, nil)
+	boltIndex, err := bbolt.Open(boltPath, 0o600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open bbolt index: %w", err)
 	}
@@ -367,7 +365,6 @@ func (bbs *BBoltStore) initBolt() (*bbolt.DB, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create buckets: %w", err)
 	}

@@ -195,7 +195,8 @@ func TestCacheManager_Search(t *testing.T) {
 		PostType: "pages",
 		Slug:     "about",
 		Name:     "About Us",
-		Author:   "John"},
+		Author:   "John",
+	},
 	)
 
 	// Test Search

@@ -2,6 +2,4 @@ package downcache
 
 import "errors"
 
-var (
-	ErrInvalidPostMeta = errors.New("invalid post metadata")
-)
+var ErrInvalidPostMeta = errors.New("invalid post metadata")

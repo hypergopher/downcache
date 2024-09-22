@@ -80,7 +80,6 @@ func (fs *LocalMarkdownFS) Walk(ctx context.Context) (<-chan *Post, <-chan error
 
 			return nil
 		})
-
 		if err != nil {
 			errs <- err
 		}
@@ -117,7 +116,7 @@ func (fs *LocalMarkdownFS) Read(_ context.Context, postType, slug string) (*Post
 func (fs *LocalMarkdownFS) Write(_ context.Context, post *Post) error {
 	path := fs.buildPath(post.PostType, post.Slug)
 
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	err := os.MkdirAll(filepath.Dir(path), 0o755)
 	if err != nil {
 		return err
 	}
@@ -138,30 +137,12 @@ func (fs *LocalMarkdownFS) Write(_ context.Context, post *Post) error {
 		return fmt.Errorf("unsupported frontmatter format: %s", fs.format)
 	}
 
-	return os.WriteFile(path, []byte(post.Content), 0644)
+	return os.WriteFile(path, []byte(post.Content), 0o644)
 }
 
 func (fs *LocalMarkdownFS) Delete(_ context.Context, postType, slug string) error {
 	path := fs.buildPath(postType, slug)
-	err := os.Remove(path)
-	if err != nil {
-		return err
-	}
-
-	//// Remove empty directories
-	//dir := filepath.Dir(path)
-	//for dir != fs.rootDir {
-	//	err = os.Remove(dir)
-	//	if err != nil {
-	//		if !os.IsNotExist(err) {
-	//			return err
-	//		}
-	//		break
-	//	}
-	//	dir = filepath.Dir(dir)
-	//}
-
-	return nil
+	return os.Remove(path)
 }
 
 func (fs *LocalMarkdownFS) Move(_ context.Context, oldType, oldSlug, newType, newSlug string) error {
@@ -169,31 +150,13 @@ func (fs *LocalMarkdownFS) Move(_ context.Context, oldType, oldSlug, newType, ne
 	newPath := fs.buildPath(newType, newSlug)
 
 	// Ensure the directory for the new path exists
-	err := os.MkdirAll(filepath.Dir(newPath), 0755)
+	err := os.MkdirAll(filepath.Dir(newPath), 0o755)
 	if err != nil {
 		return err
 	}
 
 	// Move the file
-	err = os.Rename(oldPath, newPath)
-	if err != nil {
-		return err
-	}
-
-	//// Remove empty directories from the old path
-	//oldDir := filepath.Dir(oldPath)
-	//for oldDir != fs.rootDir {
-	//	err = os.Remove(oldDir)
-	//	if err != nil {
-	//		if !os.IsNotExist(err) {
-	//			return err
-	//		}
-	//		break
-	//	}
-	//	oldDir = filepath.Dir(oldDir)
-	//}
-
-	return nil
+	return os.Rename(oldPath, newPath)
 }
 
 func (fs *LocalMarkdownFS) buildPath(postType, slug string) string {

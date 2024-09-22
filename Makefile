@@ -16,7 +16,8 @@ help:
 .PHONY: tidy
 tidy:
 	go mod tidy -v
-	go fmt ./...
+	go run mvdan.cc/gofumpt@latest -w .
+	@# go fmt ./...
 
 ## audit: run quality control checks
 .PHONY: audit
